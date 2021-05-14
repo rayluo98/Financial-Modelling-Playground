@@ -22,6 +22,10 @@
 using namespace std;
 
 
+void hello()
+{
+	std::cout << "Hello Concurrent World\n";
+}
 
 class comp {
 public:
@@ -115,7 +119,8 @@ private:
 	int matrix[3][4];
 	// Stores the IWB Price Data
 	std::map < std::string, std::pair<double, double >> IWB;
-
+	// Multithread needs
+	std::vector<std::vector<std::string>> stock_buckets;
 	// The following stores for libcurl
 	FILE* fp1; FILE* fp2;
 	CURL* handle;
@@ -125,6 +130,7 @@ private:
 	const char resultfilename[FILENAME_MAX] = "Results.txt";
 
 public:
+
 	// Implements Boostrap Method
 	void Bootstrap() {};
 
@@ -208,7 +214,6 @@ public:
 		fprintf(stderr, "Curl init failed!\n");
 		return exit(1);
 		}
-
 	}
 
 	void goodbye_cookie_monster() {
@@ -247,7 +252,6 @@ public:
 		// if everything's all right with the easy handle... 
 		if (handle)
 		{
-			string sCookies, sCrumb;
 			fp1 = fopen(result2filename, "w");
 			string urlA = "https://query1.finance.yahoo.com/v7/finance/download/";
 			string symbol = "IWB";
@@ -261,6 +265,8 @@ public:
 
 			fprintf(fp1, "%s\n", symbol.c_str());
 			curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, write_data);
+			const char* cookies = sCookies.c_str();
+			curl_easy_setopt(handle, CURLOPT_COOKIE, cookies);
 			curl_easy_setopt(handle, CURLOPT_WRITEDATA, fp1);
 			result = curl_easy_perform(handle);
 			fprintf(fp1, "%c", '\n');
@@ -293,6 +299,7 @@ public:
 			// Keeps track of previous price
 			double lastValue = 0;
 			while (getline(sData, line)) {
+				std::cout << line << endl;
 				double ret = 0;
 				sDate = line.substr(0, line.find_first_of(','));
 				line.erase(line.find_last_of(','));
@@ -463,6 +470,10 @@ public:
 
 	// Uses libcurl to extract stock information
 	void extractStock(const std::string& ticker, int days) {
+		//curl_global_init(CURL_GLOBAL_ALL);
+
+		// curl_easy_init() returns a CURL easy handle 
+		CURL* newhandle = curl_easy_init();
 		stocks[ticker].nowStored(true);
 		//cout << "day 0" << stocks[ticke;r].getDay() << endl;
 		time_t t = stotime(stocks[ticker].getDay());
@@ -483,13 +494,13 @@ public:
 		string url = urlA + symbol + urlB + startTime + urlC + endTime + urlD + sCrumb;
 		const char* cURL = url.c_str();
 		const char* cookies = sCookies.c_str();
-		curl_easy_setopt(handle, CURLOPT_COOKIE, cookies);
-		curl_easy_setopt(handle, CURLOPT_URL, cURL);
+		curl_easy_setopt(newhandle, CURLOPT_COOKIE, cookies);
+		curl_easy_setopt(newhandle, CURLOPT_URL, cURL);
 
 		fprintf(fp1, "%s\n", symbol.c_str());
-		curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, write_data);
-		curl_easy_setopt(handle, CURLOPT_WRITEDATA, fp1);
-		result = curl_easy_perform(handle);
+		curl_easy_setopt(newhandle, CURLOPT_WRITEFUNCTION, write_data);
+		curl_easy_setopt(newhandle, CURLOPT_WRITEDATA, fp1);
+		result = curl_easy_perform(newhandle);
 		fprintf(fp1, "%c", '\n');
 
 		// Check for errors */
@@ -499,9 +510,9 @@ public:
 			fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(result));
 			exit(1);
 		}
-		curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, write_data2);
-		curl_easy_setopt(handle, CURLOPT_WRITEDATA, (void*)&data);
-		result = curl_easy_perform(handle);
+		curl_easy_setopt(newhandle, CURLOPT_WRITEFUNCTION, write_data2);
+		curl_easy_setopt(newhandle, CURLOPT_WRITEDATA, (void*)&data);
+		result = curl_easy_perform(newhandle);
 
 		if (result != CURLE_OK)
 		{
@@ -620,20 +631,41 @@ public:
 
 	// Pull all data for stocks
 	void pullAll(int days) {
-		for (auto c : stocks) {
-			printStock(c.first, days);
+		std::vector<std::thread> threads;
+		int pool_size = 10;
+		for (int i = 0; i < pool_size; i++) {
+			std::vector<std::string> bucket;
+			stock_buckets.push_back(bucket);
 		}
-		/*
-				for (auto c : stocks) {
-			threads.push_back(std::thread(&Interface::printStock, this, c.first, days)); 
+		int counter = 0;
+		for (auto c : stocks) {
+			counter++;
+			stock_buckets[counter % pool_size].push_back(c.first);
+			//printStock(c.first, days);
+			//threads.push_back(std::thread(&Interface::printStock, this, c.first, days));
+			//break;
+		}
+		
+		for (int i = 0; i < pool_size; i++) {
+			threads.push_back(std::thread(&Interface::multiThreadPull, this, i, days));
+			//std::thread t(hello);
 		}
 
-		for (auto& th : threads) {
-			th.join();
+		for (std::thread& th : threads) {
+			threads.join();
 		}
-		*/
+
+	
 	}
 
+	void multiThreadPull(int idx, int days) {
+		std::cout << "shiiit" << endl;
+		std::vector<std::string> bucket = stock_buckets[idx];
+		for (auto name : bucket) {
+			std::cout << "shiiit " << name << endl;
+			getStock(name, days);
+		}
+	}
 	// Returns the info of the stock
 	void getInfo(const std::string& ticker, int days) {
 		std::vector<double> data = getStock(ticker, days);
