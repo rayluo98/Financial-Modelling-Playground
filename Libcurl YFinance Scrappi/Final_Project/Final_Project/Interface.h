@@ -16,7 +16,11 @@
 #include <ctime>
 #include <deque>
 #include "curl.h"
-#include <thread>
+#include "Threadpool.h"
+//#include "matrix.h"
+#include <stdlib.h>
+#include <time.h>
+#include <math.h>
 //#include "matrix.h"
 
 using namespace std;
@@ -36,6 +40,24 @@ public:
 			> o2.getSurprise());
 	}
 };
+
+double mean(double a[], int n)
+{
+	int sum = 0;
+	for (int i = 0; i < n; i++)
+		sum += a[i];
+	return sum / n;
+}
+
+double std(double* x, int len)
+{
+	double sum = 0;
+	double average = mean(x, len);
+	for (int i = 0; i < len; i++)
+		sum += pow(x[i] - average, 2);
+	return sqrt(sum / len);
+}
+
 
 time_t dateToTimeT(int month, int day, int year) {
 	// january 5, 2000 is passed as (1, 5, 2000)
@@ -112,7 +134,7 @@ private:
 	// Priority Queue Storing the Keys of Stocks Ordered by Surprise Level
 	priority_queue <Stock, std::vector<Stock>, comp> pq;
 	// Matrix storing stats of different groups - Group 0 [low], Group 1 [in between], Group 2 [high]
-	int matrix[3][4];
+	//matrix matrix_(3, 4);
 	// Stores the IWB Price Data
 	std::map < std::string, std::pair<double, double >> IWB;
 
@@ -126,7 +148,97 @@ private:
 
 public:
 	// Implements Boostrap Method
-	void Bootstrap() {};
+	/*void Bootstrap()
+	{   // N should be be defined here
+		srand((unsigned)time(NULL));
+
+		vector<string> group_0;
+		vector<string> group_1;
+		vector<string> group_2;
+		int group_0_size = group_0.size();
+		int group_1_size = group_1.size();
+		int group_2_size = group_2.size();
+
+		iter = stocks.begin();      // from stocks map to 3 group
+		while (iter != stocks.end()) {
+			if ((iter->second).getGroup() == "Low surprise group")
+				group_0.push_back(iter->first);
+			else if ((iter->second).getGroup() == "In Between group")
+				group_1.push_back(iter->first);
+			else if ((iter->second).getGroup() == "High surprise group")
+				group_2.push_back(iter->first);
+			else;
+			iter++;
+		}
+
+		// double AAR0s[40], AAR1s[40],AAR2s[40];
+		double CAAR0s[40], CAAR1s[40], CAAR2s[40];
+		double CAARt_0[60], CAARt_1[60], CAARt_2[60];
+
+		for (int i = 0; i < 40; i++)
+		{
+			vector<string> group_0_selected;
+			vector<string> group_1_selected;
+			vector<string> group_2_selected;
+			vector<int> group_0_label(group_0_size);   // all 0 now, not selected; labeled 1 if selected
+			vector<int> group_1_label(group_1_size);
+			vector<int> group_2_label(group_2_size);
+
+			// a. Randomly selecting 50 stocks from each group, total 150 stocks.
+			matrix AART_0(1, 2N + 1);
+			matrix AART_1(1, 2N + 1);
+			matrix AART_2(1, 2N + 1);
+			for (int j = 0; j < 50; j++)  // Need to make sure each group has >=50 stocks
+			{
+				int a = rand() % group_0_size;
+				while (group_0_label[a] == 1) a = rand() % group_0_size;
+				group_0_label[a] = 1;
+				group_0_selected.push_back(group_0[a].getName);
+				matrix m0(1, 2N + 1) = getStock(group_0[a].getName, N);  // Need to change the return to AR_it
+				AART_0 += m0;
+
+				a = rand() % group_1_size;
+				while (group_1_label[a] == 1) a = rand() % group_1_size;
+				group_1_label[a] = 1;
+				group_1_selected.push_back(group_1[a].getName);
+				matrix m1(1, 2N + 1) = getStock(group_1[a].getName, N);  // Need to change the return to AR_it
+				AART_1 += m1;
+
+				a = rand() % group_2_size;
+				while (group_2_label[a] == 1) a = rand() % group_2_size;
+				group_2_label[a] = 1;
+				group_2_selected.push_back(group_2[a].getName);
+				getStock(group_0[a].getName, N);
+				matrix m2(1, 2N + 1) = getStock(group_2[a].getName, N);  // Need to change the return to AR_it
+				AART_2 += m2;
+
+				for (int k = 0; k < 2N + 1; k++)
+				{
+					CAARt_0[k] += AART_0.sum(k + 1);
+					CAARt_1[k] += AART_1.sum(k + 1);
+					CAARt_2[k] += AART_2.sum(k + 1);
+				}
+			}
+
+			AART_0 *= 1 / 50;
+			AART_1 *= 1 / 50;
+			AART_2 *= 1 / 50;
+
+			CAAR_0 = AART_0.sum(); CAAR0s[i] = CAAR_0;
+			CAAR_1 = AART_1.sum(); CAAR1s[i] = CAAR_1;
+			CAAR_2 = AART_2.sum(); CAAR2s[i] = CAAR_2;
+		}
+		double CAAR_0_mean = mean(CAAR_0s, 40);
+		double CAAR_1_mean = mean(CAAR_1s, 40);
+		double CAAR_2_mean = mean(CAAR_2s, 40);
+
+		double CAAR_0_std = std(CAAR_0s, 40);
+		double CAAR_1_std = std(CAAR_1s, 40);
+		double CAAR_2_std = std(CAAR_2s, 40);
+
+
+
+	};*/
 
 	// Initialize Cookies and Crumbs
 	void init_cookie_monster() {
@@ -620,12 +732,30 @@ public:
 
 	// Pull all data for stocks
 	void pullAll(int days) {
+		
+		
 		for (auto c : stocks) {
+			
 			printStock(c.first, days);
 		}
+		
+		
+		//FAILED ATTEMPT #1
+		// create thread pool with 4 worker threads
 		/*
-				for (auto c : stocks) {
-			threads.push_back(std::thread(&Interface::printStock, this, c.first, days)); 
+		ThreadPool pool(2);
+
+		// enqueue and store future
+		for (auto c : stocks) {
+			pool.enqueue(&Interface::printStock, this, c.first, days);
+		}
+		*/
+
+		//FAILED ATTEMPT #2
+		/*
+		std::vector<std::thread> threads;
+		for (auto c : stocks) {
+			threads.push_back(std::thread(&Interface::printStock, this, c.first, days));
 		}
 
 		for (auto& th : threads) {
