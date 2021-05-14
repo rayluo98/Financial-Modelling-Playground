@@ -652,7 +652,7 @@ public:
 		}
 
 		for (std::thread& th : threads) {
-			threads.join();
+			th.join();
 		}
 
 	
@@ -663,7 +663,7 @@ public:
 		std::vector<std::string> bucket = stock_buckets[idx];
 		for (auto name : bucket) {
 			std::cout << "shiiit " << name << endl;
-			getStock(name, days);
+			extractStock(name, days);
 		}
 	}
 	// Returns the info of the stock
