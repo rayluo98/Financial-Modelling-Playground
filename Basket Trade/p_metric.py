@@ -198,39 +198,46 @@ class pMetric(object):
 		# 2. ### Sequentially check all possible joints: finding the best i,j \in [a, v)x(v,b] that could be joined
 		takefjoin = 0
 		maxbalance = 0
+		maxFromA = True ## if max is from A then TRUE, if max is from B then FALSE
 		sbit = 0 #pMetric.vb_maxs[0]
 		while ait < len(pMetric.av_mins):
 			bit = sbit
 			while(bit != len(pMetric.vb_maxs)):
-				fjoin = pMetric.pvar_diff(x[pMetric.av_mins[ait].it] - x[pMetric.vb_maxs[bit].it], p)
-				balance = fjoin - x[bit].ev - x[ait].ev
+				fjoin = pMetric.pvar_diff(x[pMetric.av_mins[ait].it] - x[pMetric.vb_maxs[bit].it], pMetric.p)
+				balance = fjoin - x[pMetric.vb_maxs[bit].it].ev - x[pMetric.av_mins[ait].it].ev
 				if (balance>maxbalance):
 					maxbalance = balance
 					takefjoin = fjoin
 					tait = ait
 					sbit = tbit = bit
+					maxFromA = False
 				bit += 1
 			ait += 1
 
 		sbit = 0 #pMetric.vb_mins[0]
 		ait = 0
-		while(ait!=len(pMetric.av_maxs)):
+		while(ait < len(pMetric.av_maxs)):
 			bit = sbit
 			while(bit!=len(pMetric.vb_mins)):
-				fjoin = pMetric.pvar_diff( x[ait] - x[bit], p )
-				balance = fjoin - (*bit).ev - (*ait).ev ;
+				fjoin = pMetric.pvar_diff( x[pMetric.av_maxs[ait].it] - x[pMetric.vb_mins[bit].it], pMetric.p)
+				balance = fjoin - pMetric.vb_mins[bit].ev - pMetric.av_maxs[ait].ev
 				if (balance>maxbalance):
 					maxbalance = balance
 					takefjoin = fjoin
 					tait = ait
 					sbit = tbit = bit
+					maxFromA = True
+				bit += 1
+			ait += 1
 
-		// if we found any point, join it by erasing all middle points
+		# if we found any point, join it by erasing all middle points
 		if(maxbalance>0):
-			links[(*tait).it].next = (*tbit).it;
-			links[(*tbit).it].prev = (*tait).it;
-			links[(*tbit).it].pvdiff = takefjoin;
-			
+			pMetric.links[pMetric.av_maxs[tait].it if maxFromA else pMetric.av_mins[tait].it].next = \
+				pMetric.vb_mins[tbit].it if maxFromA else pMetric.vb_maxs[tbit].it
+			pMetric.links[pMetric.vb_mins[tbit].it if maxFromA else pMetric.vb_maxs[tbit].it].prev = \
+				(pMetric.av_maxs[tait].it if maxFromA else pMetric.av_mins[tait].it).next
+			pMetric.links[pMetric.vb_mins[tbit].it if maxFromA else pMetric.vb_maxs[tbit].it].pvdiff = takefjoin
+			 
 
 	# Merge optimal intervals. LSI is the length of optimal intervals in the beginning.
 	def MergeIntervalsRecursively(x: list, links: list[pointdata], p: int, LSI: int =2)->None:
@@ -243,7 +250,9 @@ class pMetric(object):
 		it = 0
 		IterList:list[int]
 		# stores iterators for list
-		a_IL, v_IL, b_IL
+		a_IL = 0
+		v_IL = 0
+		b_IL = 0
 
 		### 1. Finding all the intervals that will be merged
 		count = 0
@@ -258,22 +267,20 @@ class pMetric(object):
 		# std::list<T>::size has constant complexity since C++11
 		while(len(IterList)>2):
 			a_IL = IterList.begin()
-			while (true):
+			while (len(IterList) > 0):
 				# we are guaranteed that a_IL != IterList.end() here
-				v_IL = a_IL;
-				++v_IL;
-				if (v_IL != IterList.end())
-				{
-					b_IL = v_IL;
-					++b_IL;
-					if (b_IL != IterList.end()){
-						Merge2GoodInt(*a_IL, *v_IL, *b_IL);
-						a_IL = IterList.erase(v_IL); // now a_IL == b_IL
-					} else {
-						break;
-					}
-				} else {
-					break;
+				v_IL = a_IL
+				v_IL += 1
+				if (v_IL != IterList.end()):
+					b_IL = v_IL
+					b_IL += 1
+					if (b_IL != IterList.end()):
+						pMetric.Merge2GoodInt(links[a_IL], links[v_IL], links[b_IL])
+						a_IL = IterList.erase(v_IL) # now a_IL == b_IL
+					else:
+						break
+				else:
+					break
 				
 
 	# p-variation calculation (in Python)
@@ -288,15 +295,15 @@ class pMetric(object):
 
 		pMetric.links.clear()
 
-		DetectLocalExtrema(x, links,  p)
-		CheckShortIntervals(x, links, p)
-		MergeIntervalsRecursively(x, links, p, 4)
+		pMetric.DetectLocalExtrema(x, pMetric.links,  p)
+		pMetric.CheckShortIntervals(x, pMetric.links, p)
+		pMetric.MergeIntervalsRecursively(x, pMetric.links, p, 4)
 
 		# output:
 		pvalue=0
 		i = 0
 		while ( i < len(x) ):
-			pvalue += links[i].pvdiff
-			i = links[i].next
+			pvalue += pMetric.links[i].pvdiff
+			i = pMetric.links[i].next
 
 		return pvalue
