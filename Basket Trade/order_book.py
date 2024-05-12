@@ -50,7 +50,7 @@ class Book:
     @classmethod
     def get_history(self):
         history = pd.DataFrame(self.history)
-        history.columns=["Date", "Cost Basis", "Value", "PnL"]
+        history.columns=["Date", "CostBasis", "Value", "PnL"]
         return history
     @classmethod
     def get_pnl_snapshot(start_date: pd.Datetime=None, end_date: pd.DateFrame=None)->pd.DataFrame:
@@ -62,7 +62,7 @@ class Book:
     @classmethod
     def get_books(self):
         books = pd.DataFrame(self.books)
-        books.columns=["Date", "Ticker", "Quantity", "Cost Basis", "Value", "Unrealized PnL"]
+        books.columns=["Date", "Ticker", "Quantity", "CostBasis", "Value", "Unrealized PnL"]
         return books
     @classmethod
     def getTickerBook(ticker: list[str], start_date:pd.DataFrame= None, end_date:pd.DataFrame=None)->pd.DataFrame:
@@ -88,40 +88,18 @@ class Book:
 
     # we repopulate pnl using price history of stocks
     @classmethod
-    def backfillPnL(price_history: pd.DataFrame):
-
-
-    def long(self, stock_name, current_price, dollar_amount):
-        order = Trade(stock_name, current_price[stock_name], dollar_amount, True)
-        self.orders.append(order)
-        self.history.append(order.info())
-        
-    def short(self, stock_name, current_price, dollar_amount):
-        order = Trade(stock_name, current_price[stock_name], dollar_amount, False)
-        self.orders.append(order)
-        self.history.append(order.info())
-
-    def cur_pnl(self, price):
-        pnls = []
-        cur_price = []
-        for pos in self.orders:
-            pnls.append(pos.cur_pnl(price[pos.stock]))
-            cur_price.append(price[pos.stock])
-        return [pnls, cur_price, sum(pnls)]
-    def get_pnl_history(self):
-        df = pd.DataFrame(self.pnl_history)
-        df.columns = ['Stock', 'Open Price', 'Quantity', 'Long/Short', 'Close Price', 'PnL']
-        return df
-        
-    def sell_all(self, price): 
-        for pos in self.orders:
-            profit = pos.cur_pnl(price[pos.stock])
-            dir = 'long' if pos.long_short else 'short'
-            res = [pos.stock, pos.price, pos.quantity, dir, price[pos.stock], profit]
-            self.pnl_history.append(res)
-        cur_pnl = self.cur_pnl(price)[2]
-        self.profit.append(cur_pnl)
-        self.cumulative_profit += cur_pnl
-        self.orders = []
-        return
+    def backfillPnL(self, price_history: pd.DataFrame)->None:
+        # might need rename here
+        price_history.columns=["Date", "Ticker", "Price"]
+        orderBook = Book.get_books()
+        orderBook.sort_values("Date", ascending=False, inplace=True)
+        price_history.sort_values("Date", ascending=False, inplace=True)
+        correctedOrders = pd.merge_asof(price_history, orderBook, on="Date", by=["Ticker"])
+        correctedOrders["Value"] = correctedOrders.apply(lambda dr: dr["Price"] * dr["Quantity"], axis=1)
+        correctedOrders["Unrealized PnL"] = correctedOrders["Value"] - correctedOrders["Cost Basis"]
+        correctedOrders =correctedOrders.filter(["Date", "Ticker", "CostBasis", "Value", "Unrealized PnL"])
+        self.history = correctedOrders.groupby("Date").agg(CostBasis=("CostBasis", "sum"),
+                                                           Value=("Value", "sum"),
+                                                           PnL = ("Unrealized PnL", "sum"))
+    
         
