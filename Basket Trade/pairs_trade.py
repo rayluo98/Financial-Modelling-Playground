@@ -16,7 +16,7 @@ lock = RLock()
 
 def install(package):
     subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-install("pandas")
+install("cntk")
 
 #%%
 tickers = pd.read_csv(r"C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Basket Trade\tickers.csv", header=None)
