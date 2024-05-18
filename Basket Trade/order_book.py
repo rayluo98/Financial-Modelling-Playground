@@ -3,11 +3,11 @@ from dataclasses import dataclass
 
 @dataclass
 class Page:
-    Date: pd.DateTime
+    Date: pd.Timestamp
     Ticker: str
     Quantity: float
     CostBasis: float
-    MV: float, 
+    MV: float
     unrealizedPnl: float
 
 @dataclass
@@ -53,7 +53,7 @@ class Book:
         history.columns=["Date", "CostBasis", "Value", "PnL"]
         return history
     @classmethod
-    def get_pnl_snapshot(start_date: pd.Datetime=None, end_date: pd.DateFrame=None)->pd.DataFrame:
+    def get_pnl_snapshot(start_date: pd.Timestamp=None, end_date: pd.DataFrame=None)->pd.DataFrame:
         hist = Book.get_history()
         if start_date == None:
             return hist.iloc[-1]
@@ -75,13 +75,13 @@ class Book:
     # currently assume that orders are executed 100% of the time
     # tca = transaction cost
     @classmethod
-    def addOrder(self, date:pd.DateTime, ticker:str, price: float, qty:float, tca: float = 0)->None:
+    def addOrder(self, date:pd.Timestamp, ticker:str, price: float, qty:float, tca: float = 0)->None:
         self.cash -= tca
         order = Trade(date, ticker, price, qty)
         cost = price*qty
         lastBook = Book.getTickerBook([ticker])
         new_mv = (lastBook['Quantity'] + qty)*price
-        new_cost = lastBook["Cost Basis"] + cost
+        new_cost = lastBook["CostBasis"] + cost
         self.cash -= cost
         self.orders.append(date, ticker, lastBook["Quantity"] + qty, new_cost, new_mv, new_mv - new_cost)
         self.history.append(date, new_cost, new_mv, new_mv - new_cost)
