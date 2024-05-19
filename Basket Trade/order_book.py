@@ -85,9 +85,9 @@ class Book:
         if (book.shape[0]==0):
             return book
         if start_date==None:
-            return book[book['Ticker'].isin(ticker)].iloc[-1]
+            return book[book['Ticker'].isin(ticker)].iloc[-1:]
         else:
-            return book[book['Ticker'].isin(ticker)][start_date:end_date]
+            return book[(book['Ticker'].isin(ticker)) & (book['Ticker'] <= end_date) & (book['Ticker'] >= start_date)]
     
     # currently assume that orders are executed 100% of the time
     # tca = transaction cost
