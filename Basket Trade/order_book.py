@@ -1,18 +1,31 @@
 import pandas as pd
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
 @dataclass
 class Page:
-    Date: pd.Timestamp
-    Ticker: str
-    Quantity: float
-    CostBasis: float
-    MV: float
-    unrealizedPnl: float
+    Date:pd.Timestamp
+    Ticker:str
+    Quantity:float
+    CostBasis:float
+    MV:float
+    UnrealizedPnL:float
+    
+    def __init__(self, date: pd.Timestamp, stock_name:str, quantity: float = 0.0, costbasis: float =0.0, mv: float=0.0, unrealizedpnl: float=0.0):
+        self.Ticker = stock_name
+        self.Date = date
+        self.Quantity = quantity
+        self.CostBasis = costbasis
+        self.MV = mv
+        self.UnrealizedPnL = unrealizedpnl
 
 @dataclass
 class Trade:
-    def __init__(self, date: pd.Timestamp, stock_name: str, current_price: float = 0.0, quantity: str = 0):
+    Date: pd.Timestamp
+    Ticker: str
+    Price: float 
+    Quantity: float
+    Longshort: bool
+    def __init__(self, date: pd.Timestamp, stock_name: str, current_price: float = 0.0, quantity: float = 0):
         self.Ticker = stock_name
         self.Price = current_price
         self.Quantity = quantity
@@ -54,12 +67,12 @@ class Book:
    
     def get_books(cls):
         if len(cls.books)==0:
-            return pd.DataFrame(columns=["Date", "Ticker", "Quantity", "CostBasis", "Value", "Unrealized PnL"])
-        books = pd.DataFrame(cls.books)
+            return pd.DataFrame(columns=["Date", "Ticker", "Quantity", "CostBasis", "Value", "UnrealizedPnL"])
+        books = pd.json_normalize(asdict(obj) for obj in cls.books)
         return books
 
     def getOrderDf(cls):
-        return pd.DataFrame(cls.orders)
+        return pd.json_normalize(asdict(obj) for obj in cls.orders)
     
     def getHistoryDf(cls):
         history = pd.DataFrame(cls.history)
@@ -85,7 +98,7 @@ class Book:
         if (book.shape[0]==0):
             return book
         if start_date==None:
-            return book[book['Ticker'].isin(ticker)].iloc[-1:]
+            return book[book['Ticker'].isin(ticker)].tail(1)
         else:
             return book[(book['Ticker'].isin(ticker)) & (book['Ticker'] <= end_date) & (book['Ticker'] >= start_date)]
     
@@ -101,9 +114,9 @@ class Book:
             new_cost = cost
             new_qty = qty
         else:
-            new_mv = (lastBook['Quantity'] + qty)*price
-            new_cost = lastBook["CostBasis"] + cost
-            new_qty = lastBook["Quantity"] + qty,new_cost
+            new_mv = (lastBook.iloc[0].at['Quantity'] + qty)*price
+            new_cost = lastBook.iloc[0].at['CostBasis'] + cost
+            new_qty = lastBook.iloc[0].at['Quantity'] + qty
         cls.cash -= cost
         cls.orders.append(order)      
         cls.books.append(Page(date,  ticker, new_qty, new_mv, new_mv, new_mv - new_cost))
@@ -121,10 +134,11 @@ class Book:
         price_history.sort_values("Date", ascending=True, inplace=True)
         correctedOrders = pd.merge_asof(price_history, orderBook, on="Date", by=["Ticker"])
         correctedOrders["Value"] = correctedOrders.apply(lambda dr: dr["Price"] * dr["Quantity"], axis=1)
-        correctedOrders["Unrealized PnL"] = correctedOrders["Value"] - correctedOrders["CostBasis"]
-        correctedOrders =correctedOrders.filter(["Date", "Ticker", "CostBasis", "Value", "Unrealized PnL"])
+        correctedOrders["UnrealizedPnL"] = correctedOrders["Value"] - correctedOrders["CostBasis"]
+        correctedOrders.to_csv(r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Basket Trade\debug.csv')
+        correctedOrders =correctedOrders.filter(["Date", "Ticker", "CostBasis", "Value", "UnrealizedPnL"])
         cls.history = correctedOrders.groupby("Date").agg(CostBasis=("CostBasis", "sum"),
                                                            Value=("Value", "sum"),
-                                                           PnL = ("Unrealized PnL", "sum"))
+                                                           PnL = ("UnrealizedPnL", "sum"))
     
         
