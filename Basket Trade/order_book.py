@@ -13,11 +13,11 @@ class Page:
 @dataclass
 class Trade:
     def __init__(self, date: pd.Timestamp, stock_name: str, current_price: float = 0.0, quantity: str = 0):
-        self.stock = stock_name
-        self.price = current_price
-        self.quantity = quantity
-        self.long_short = quantity > 0
-        self.date = date
+        self.Ticker = stock_name
+        self.Price = current_price
+        self.Quantity = quantity
+        self.Longshort = quantity > 0
+        self.Date = date
         
     def info(self):
         dir = "long" if self.long_short else "short"
@@ -33,40 +33,57 @@ class Trade:
         
 ## might create class for exchange specific trade
 class Book:
-    def __init__(self):
-        self.orders: Trade = []
-        self.history: pd.DataFrame = pd.DataFrame()
-        self.books: list = []
-        self.cash: float = True
-        self.verbose: bool = False
+    '''
+    orders: List[Trade]
+    history: pd.DataFrame
+    books: List[Page]
+    cash: float 
+    verbose: bool
+    '''
 
-    def verbose(self, on:bool=True)->None:
-        self.verbose = on
+    def __init__(self):
+        self.orders:list[Trade]=list()
+        self.history:list=list()
+        self.books:list[Page]=list()
+        self.cash: float = 0
+        self.verbose = False
+    
+    def verbose(cls, on:bool=True)->None:
+        cls.verbose = on
     # returns a list of orders 
-    @classmethod   
-    def positions(self):
-        return self.orders
-    # order history
-    @classmethod
-    def get_history(self):
-        history = pd.DataFrame(self.history)
-        history.columns=["Date", "CostBasis", "Value", "PnL"]
-        return history
-    @classmethod
-    def get_pnl_snapshot(start_date: pd.Timestamp=None, end_date: pd.DataFrame=None)->pd.DataFrame:
-        hist = Book.get_history()
-        if start_date == None:
-            return hist.iloc[-1]
-        else:
-            return hist[start_date:end_date]
-    @classmethod
-    def get_books(self):
-        books = pd.DataFrame(self.books)
-        books.columns=["Date", "Ticker", "Quantity", "CostBasis", "Value", "Unrealized PnL"]
+   
+    def get_books(cls):
+        if len(cls.books)==0:
+            return pd.DataFrame(columns=["Date", "Ticker", "Quantity", "CostBasis", "Value", "Unrealized PnL"])
+        books = pd.DataFrame(cls.books)
         return books
-    @classmethod
-    def getTickerBook(ticker: list[str], start_date:pd.DataFrame= None, end_date:pd.DataFrame=None)->pd.DataFrame:
-        book = Book.get_books()
+
+    def getOrderDf(cls):
+        return pd.DataFrame(cls.orders)
+    
+    def getHistoryDf(cls):
+        history = pd.DataFrame(cls.history)
+        return history
+
+    def get_orders(cls):
+        return cls.orders
+
+    # order history
+    def get_history(cls):
+        return cls.history
+
+    def get_pnl_snapshot(cls, start_date: pd.Timestamp=None, end_date: pd.DataFrame=None)->pd.DataFrame:
+        hist = cls.getHistoryDf()
+        if start_date == None:
+            return hist.iloc[-1,:]
+        else:
+            return hist[start_date:end_date,:]
+
+    def getTickerBook(cls, ticker: list[str], start_date:pd.DataFrame= None, end_date:pd.DataFrame=None)->pd.DataFrame:
+        book = cls.get_books()
+        ## if first entry we return an empty book
+        if (book.shape[0]==0):
+            return book
         if start_date==None:
             return book[book['Ticker'].isin(ticker)].iloc[-1]
         else:
@@ -74,31 +91,39 @@ class Book:
     
     # currently assume that orders are executed 100% of the time
     # tca = transaction cost
-    @classmethod
-    def addOrder(self, date:pd.Timestamp, ticker:str, price: float, qty:float, tca: float = 0)->None:
-        self.cash -= tca
+    def addOrder(cls, date:pd.Timestamp, ticker:str, price: float, qty:float, tca: float = 0)->None:
+        cls.cash -= tca
         order = Trade(date, ticker, price, qty)
         cost = price*qty
-        lastBook = Book.getTickerBook([ticker])
-        new_mv = (lastBook['Quantity'] + qty)*price
-        new_cost = lastBook["CostBasis"] + cost
-        self.cash -= cost
-        self.orders.append(date, ticker, lastBook["Quantity"] + qty, new_cost, new_mv, new_mv - new_cost)
-        self.history.append(date, new_cost, new_mv, new_mv - new_cost)
-
+        lastBook = cls.getTickerBook([ticker])
+        if (lastBook.shape[0] ==0): 
+            new_mv = qty*price
+            new_cost = cost
+            new_qty = qty
+        else:
+            new_mv = (lastBook['Quantity'] + qty)*price
+            new_cost = lastBook["CostBasis"] + cost
+            new_qty = lastBook["Quantity"] + qty,new_cost
+        cls.cash -= cost
+        cls.orders.append(order)      
+        cls.books.append(Page(date,  ticker, new_qty, new_mv, new_mv, new_mv - new_cost))
+        cls.history.append({"Date":date,"Ticker":ticker,"Quantity": new_qty,
+                            "CostBasis": new_cost, "Value":new_mv, "PnL": new_mv - new_cost})
+        
     # we repopulate pnl using price history of stocks
-    @classmethod
-    def backfillPnL(self, price_history: pd.DataFrame)->None:
+    def backfillPnL(cls, price_history: pd.DataFrame)->None:
         # might need rename here
-        price_history.columns=["Date", "Ticker", "Price"]
-        orderBook = Book.get_books()
-        orderBook.sort_values("Date", ascending=False, inplace=True)
-        price_history.sort_values("Date", ascending=False, inplace=True)
+        # ["Date", "Ticker", "Price"]
+        orderBook = cls.get_books()
+        if orderBook.shape[0]==0:
+            return price_history
+        orderBook.sort_values("Date", ascending=True, inplace=True)
+        price_history.sort_values("Date", ascending=True, inplace=True)
         correctedOrders = pd.merge_asof(price_history, orderBook, on="Date", by=["Ticker"])
         correctedOrders["Value"] = correctedOrders.apply(lambda dr: dr["Price"] * dr["Quantity"], axis=1)
-        correctedOrders["Unrealized PnL"] = correctedOrders["Value"] - correctedOrders["Cost Basis"]
+        correctedOrders["Unrealized PnL"] = correctedOrders["Value"] - correctedOrders["CostBasis"]
         correctedOrders =correctedOrders.filter(["Date", "Ticker", "CostBasis", "Value", "Unrealized PnL"])
-        self.history = correctedOrders.groupby("Date").agg(CostBasis=("CostBasis", "sum"),
+        cls.history = correctedOrders.groupby("Date").agg(CostBasis=("CostBasis", "sum"),
                                                            Value=("Value", "sum"),
                                                            PnL = ("Unrealized PnL", "sum"))
     
