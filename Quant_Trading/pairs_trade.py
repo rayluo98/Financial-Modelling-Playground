@@ -19,10 +19,10 @@ def install(package):
 install("cntk")
 
 #%%
-tickers = pd.read_csv(r"C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Basket Trade\tickers.csv", header=None)
+tickers = pd.read_csv(r"C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\tickers.csv", header=None)
 tickers = tickers.values
 print(tickers)
-yf.set_tz_cache_location(r"C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Basket Trade")
+yf.set_tz_cache_location(r"C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading")
 
 format = "%(asctime)s: %(message)s"
 logging.basicConfig(format=format, level=logging.INFO,
