@@ -6,6 +6,7 @@ import os
 import sys
 import numpy as np
 import time
+import datetime as dt
 
 sys.path.insert(0, os.path.abspath(r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading'))
 from ReferentialData import polygonData
@@ -38,8 +39,8 @@ class BetaCovFactory(BetaFactory.BetaFactory):
         totalUniverse = ticker_universe.join(self._benchmark, how = "left")
         Covar = np.cov(totalUniverse,rowvar=False)
         cols = totalUniverse.columns
-        beta = estimate_coef(totalUniverse[[cols[1]]], totalUniverse[[cols[2]]])
-        return Covar
+        beta = estimate_coef(totalUniverse[[cols[0]]], totalUniverse[[cols[1]]])
+        return beta[1]
 
     @abstractmethod
     def getBeta(self):
@@ -71,8 +72,11 @@ def main():
     bm_data = pd.DataFrame(Client.getData(bm_ticker, 1, 
                     freq, 
                     start_dt, 
-                    end_dt)).set_index("timestamp")[["close"]].rename(columns={"close":bm_ticker})
-    bm_data[bm_ticker] = bm_data[bm_ticker].pct_change()
+                    end_dt, 
+                    50000))
+    bm_data['timestamp'] = pd.to_datetime(bm_data['timestamp'], unit='ms').dt.normalize()
+    bm_data = bm_data.set_index("timestamp")[["close"]].rename(columns={"close":bm_ticker})
+    bm_data[bm_ticker] = np.log(bm_data[bm_ticker]) - np.log(bm_data[bm_ticker].shift(1))
     bm_data = bm_data[1:]
     polygonData.PolygonAPI._saveData(bm_data, 
                              bm_ticker, "{0}_{1}_{2}".format(bm_ticker,
@@ -92,6 +96,8 @@ def main():
                                         "{0}_{1}_{2}.csv".format(ticker,
                                         start_dt.replace("-",""),
                                         end_dt.replace("-",""))))
+            temp['timestamp'] = temp['timestamp'].apply(lambda str: dt.datetime.strptime(str, "%Y-%m-%d"))
+            temp = temp.set_index("timestamp")
         else:
             temp = pd.DataFrame(Client.getData(ticker, 1, 
                         freq, 
@@ -100,6 +106,7 @@ def main():
             if (len(temp) == 0):
                 continue
             else:
+                temp['timestamp'] = pd.to_datetime(temp['timestamp'], unit='ms').dt.normalize()
                 temp = temp.set_index("timestamp")[["close"]].rename(columns={"close":ticker})
                 temp[ticker] = temp[ticker].pct_change()
                 temp = temp[1:]
@@ -108,7 +115,7 @@ def main():
                                             start_dt.replace("-",""),
                                             end_dt.replace("-","")),
                                 savDir)
-                time.sleep(12)
+                time.sleep(11)
             # truncate ticker 
         beta_res[ticker] = betaFactory.calculateBeta(temp)
     return None
