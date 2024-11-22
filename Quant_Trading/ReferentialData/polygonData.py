@@ -9,7 +9,7 @@ from pathlib import Path
 
 class PolygonAPI(object):
     def __init__(self) -> None:
-        f = open("polygonApiKey.txt", "r")
+        f = open(r"C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\ReferentialData\polygonApiKey.txt", "r")
         API_KEY = f.read()
         self._client = RESTClient(api_key=API_KEY)
         pass
@@ -29,7 +29,7 @@ class PolygonAPI(object):
         hasErr: bool = False
         _error = []
         try:
-            for a in self._client.list_aggs(ticker=ticker, multiplier=1, timespan="minute", from_="2023-01-01", to="2023-06-13", limit=50000):
+            for a in self._client.list_aggs(ticker=ticker, multiplier=1, timespan=timespan, from_=from_, to=to, limit=limit):
                 aggs.append(a)
         except:
             logging.info("Ticker {0} unable to be loaded!".format(ticker))
@@ -103,7 +103,7 @@ def main():
     savDir=r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache'#'D:\DB_feed\AggData'
     override=False
 
-    Tickers to Load
+    # Tickers to Load
     _tickers = list(pd.read_csv(os.path.join(root_dir, 'clean_names.csv'))['0'])
     df = pd.read_csv(os.path.join(root_dir, 'tickers.csv'))
     _tickers = list(df[df.columns[0]])
