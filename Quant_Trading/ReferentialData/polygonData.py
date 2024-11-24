@@ -21,19 +21,28 @@ class PolygonAPI(object):
                 ticker: str, multiplier:int = 1, 
                 timespan:str="minute", 
                 from_="2023-01-01", 
-                to="2023-06-13", 
+                to_="2023-06-13", 
                 limit=50000,
-                logDir=r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_ErrorLogs'):
+                logDir=r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_ErrorLogs',
+                attemptNo = 0):
     # List Aggregates (Bars)
         aggs = []
         hasErr: bool = False
         _error = []
         try:
-            for a in self._client.list_aggs(ticker=ticker, multiplier=1, timespan=timespan, from_=from_, to=to, limit=limit):
+            for a in self._client.list_aggs(ticker=ticker, multiplier=1, timespan=timespan, from_=from_, to=to_, limit=limit):
                 aggs.append(a)
+            if len(aggs) == 0:
+                if attemptNo > 2:
+                    # logging.info("No data loaded for Ticker {0}".format(ticker))
+                    print("No data loaded for Ticker {0}".format(ticker))
+                else:
+                    time.sleep(5)
+                    print("Retrying for ticker {0}... Attempt {1}".format(ticker, attemptNo + 2))
+                    return self.getData(ticker, timespan, from_, to_, limit, logDir, attemptNo + 1)
         except:
-            logging.info("Ticker {0} unable to be loaded!".format(ticker))
-
+            # logging.info("Ticker {0} unable to be loaded!".format(ticker))
+            print("Ticker {0} unable to be loaded!".format(ticker))
         return aggs
 
     def getLastTrade(self, ticker: str):
