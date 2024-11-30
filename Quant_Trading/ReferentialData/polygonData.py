@@ -37,7 +37,7 @@ class PolygonAPI(object):
                     # logging.info("No data loaded for Ticker {0}".format(ticker))
                     print("No data loaded for Ticker {0}".format(ticker))
                 else:
-                    time.sleep(5)
+                    time.sleep(20)
                     print("Retrying for ticker {0}... Attempt {1}".format(ticker, attemptNo + 2))
                     return self.getData(ticker, timespan, from_, to_, limit, logDir, attemptNo + 1)
         except:

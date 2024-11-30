@@ -47,9 +47,7 @@ class BetaCovFactory(BetaFactory.BetaFactory):
     def getBeta(self):
         return self._beta
     
-
 def main():
-    Client = polygonData.PolygonAPI()
     ## Load names to load 
     ## End Date
     end_dt = "2024-11-22"
@@ -61,14 +59,14 @@ def main():
     root_dir = r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\Histo'
     savDir=r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache\Beta_Callibration'#'D:\DB_feed\AggData'
     override=False
-
+    bm_ticker = "^FTW5000"
+    Client = polygonData.PolygonAPI()
     # Tickers to Load
     _tickers = list(pd.read_csv(os.path.join(root_dir, 'clean_names.csv'))['0'])
     df = pd.read_csv(os.path.join(root_dir, 'tickers.csv'))
     _tickers = list(df[df.columns[0]])
     
     ## extract benchmark data 
-    bm_ticker = "^FTW5000"
     yf_res = yf.Ticker(bm_ticker)
     info = yf_res.info
     # get historical market data
@@ -87,7 +85,7 @@ def main():
     bm_data[bm_ticker] = np.log(bm_data[bm_ticker]) - np.log(bm_data[bm_ticker].shift(1))
     bm_data = bm_data[1:]
     polygonData.PolygonAPI._saveData(bm_data, 
-                             bm_ticker, "{0}_{1}_{2}".format(bm_ticker,
+                            bm_ticker, "{0}_{1}_{2}".format(bm_ticker,
                                         start_dt.replace("-",""),
                                         end_dt.replace("-","")),
                             savDir)
@@ -97,6 +95,7 @@ def main():
     betaFactory = BetaCovFactory(bm_data)
 
     for ticker in _tickers:
+        loaded = False
         if ticker == bm_ticker:
             continue
         if os.path.exists(os.path.join(savDir, ticker)):
@@ -106,7 +105,8 @@ def main():
                                         end_dt.replace("-",""))))
             temp['timestamp'] = temp['timestamp'].apply(lambda str: dt.datetime.strptime(str, "%Y-%m-%d"))
             temp = temp.set_index("timestamp")
-        else:
+            loaded = True
+        elif override:
             temp = pd.DataFrame(Client.getData(ticker, 1, 
                         freq, 
                         start_dt, 
@@ -116,18 +116,20 @@ def main():
             
             temp['timestamp'] = pd.to_datetime(temp['timestamp'], unit='ms').dt.normalize()
             temp = temp.set_index("timestamp")[["close"]].rename(columns={"close":ticker})
-            temp[ticker] = temp[ticker].pct_change()
+            temp[ticker] = np.log(temp[ticker]) - np.log(temp[ticker].shift(1))
             temp = temp[1:]
             polygonData.PolygonAPI._saveData(temp, 
                             ticker, "{0}_{1}_{2}".format(ticker,
                                         start_dt.replace("-",""),
                                         end_dt.replace("-","")),
                             savDir)
-            time.sleep(12)
+            loaded = True
+            time.sleep(20)
             # truncate ticker 
-        beta_res[ticker] = betaFactory.calculateBeta(temp)
+        if loaded:
+            beta_res[ticker] = betaFactory.calculateBeta(temp)
     pd.DataFrame(beta_res.items(), columns=['Ticker', 'Beta']).to_csv(os.path.join(savDir, "{0}_beta.csv".format(bm_ticker)))
-    return None
+    return pd.DataFrame(beta_res.items(), columns=['Ticker', 'Beta'])
 
 if __name__=="__main__":
     main()
