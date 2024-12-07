@@ -7,6 +7,7 @@ from sklearn import datasets
 from collections import namedtuple
 import numpy as np
 import pandas as pd
+from matplotlib import pyplot as plt
 
 Score = namedtuple("Score", ["Silhouette", "Rand"])
 
@@ -24,7 +25,7 @@ for each unvisited point p in dataset {
          if |N|>=MinPts:
              N = N U N'
              if p' is not a member of any cluster:
-                 add p' to cluster C 
+                 add p' to cluster C  
 }
 """
 
@@ -44,9 +45,8 @@ class DBSCANwrapper(object):
         
         # Normalizing the data so that  
         # the data approximately follows a Gaussian distribution 
-        X_normalized = normalize(X_scaled) 
   
-        db = DBSCAN(eps=eps, min_samples=min_samples).fit(X_normalized)
+        db = DBSCAN(eps=eps, min_samples=min_samples).fit(X)
         # core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
         # core_samples_mask[db.core_sample_indices_] = True
         self._model = db
@@ -84,7 +84,37 @@ class DBSCANwrapper(object):
         self.fit(self.X, optimal_eps, optimal_minSample)
         return None
 
-    
+    def _plot(self):
+        labels = self.getLabels()
+        core_samples_mask = np.zeros_like(labels, dtype=bool)
+        core_samples_mask[self._model.core_sample_indices_] = True
+        # Number of clusters in labels, ignoring noise if present.
+        n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
+        X = self.X
+        # Plot result
+        # Black removed and is used for noise instead.
+        unique_labels = set(labels)
+        colors = ['y', 'b', 'g', 'r']
+        for k, col in zip(unique_labels, colors):
+            if k == -1:
+                # Black used for noise.
+                col = 'k'
+        
+            class_member_mask = (labels == k)
+        
+            xy = X[class_member_mask & core_samples_mask]
+            plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=col,
+                    markeredgecolor='k',
+                    markersize=6)
+        
+            xy = X[class_member_mask & ~core_samples_mask]
+            plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=col,
+                    markeredgecolor='k',
+                    markersize=6)
+        
+        plt.title('number of clusters: %d' % n_clusters_)
+        plt.show()
+
     def getLabels(self):
         if self._model == None:
             print("WARNING: model not fit yet!")
@@ -106,9 +136,14 @@ class DBSCANwrapper(object):
 def main():
     beta = pd.read_csv(r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache\Beta_Callibration\^FTW5000_beta.csv').set_index('Ticker')
     beta = beta.loc[:, ~beta.columns.str.contains('^Unnamed')]
+    beta_mean = beta['Beta'].mean()
+    beta_stdev = beta['Beta'].std()
+    ### remove 6 six sigma names
+    beta = beta[(beta['Beta'] - beta_mean) < 3 * beta_stdev]
     dbModel = DBSCANwrapper(beta)
     dbModel._optimize("SC")
     print(dbModel.getLabels())
+    print(dbModel._plot())
 
 if __name__ == "__main__":
     main()

@@ -17,6 +17,28 @@ class PolygonAPI(object):
     def __repr__(self) -> str:
         return self.get__repr__()
     
+
+    def getStatic(self, 
+                ticker:str, 
+                from_="2023-01-01", 
+                to_="2023-06-13"):
+        statics = {}
+        hasErr: bool = False
+        _error = []
+        start_dt = pd.Timestamp(from_)
+        end_dt = pd.Timestamp(to_)
+        while(start_dt < end_dt):
+            date = start_dt.strftime("%Y-%m-%d")
+            try:
+                statics[date]=self._client.get_ticker_details(ticker, date)
+            except:
+                # logging.info("Ticker {0} unable to be loaded!".format(ticker))
+                print("Ticker {0} Statucs unable to be loaded for {1}!".format(ticker, date))
+            start_dt += pd.offsets.BusinessDay(1)
+            
+        return pd.DataFrame(statics)
+        
+    
     def getData(self, 
                 ticker: str, multiplier:int = 1, 
                 timespan:str="minute", 
@@ -131,7 +153,7 @@ def main():
     for ticker in _tickers:
         if not override and os.path.exists(os.path.join(savDir, ticker)):
             continue
-        PolygonAPI._saveData(pd.DataFrame(Client.getData(ticker)), 
+        Client._saveData(pd.DataFrame(Client.getData(ticker)), 
                              ticker, "{0}_{1}_{2}".format(ticker,
                                         start_dt.replace("-",""),
                                         end_dt.replace("-","")),
@@ -141,7 +163,23 @@ def main():
     # PolygonAPI._removeEmptyFiles(savDir)
 
 
+## test
+def test():
+    Client = PolygonAPI()
+    ## Load names to load 
+    ## End Date
+    end_dt = "2024-11-15"
+    ## Start date
+    start_dt = "2022-07-10"
+    ### root folder
+    root_dir = r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\Histo'
+    savDir=r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache'#'D:\DB_feed\AggData'
+    override=False
+    ticker = "AGG"
+    temp = Client.getStatic(ticker,
+                         start_dt,
+                         end_dt)
 # Using the special variable 
 # __name__
 if __name__=="__main__":
-    main()
+    test()
