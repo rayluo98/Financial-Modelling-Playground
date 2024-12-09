@@ -5,7 +5,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from Clustering.DBSCAN import DBSCANwrapper
 from sklearn.preprocessing import StandardScaler 
-from sklearn.preprocessing import normalize 
+from sklearn.preprocessing import normalize
 from sklearn.decomposition import PCA 
 
 
