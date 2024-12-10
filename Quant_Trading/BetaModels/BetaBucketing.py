@@ -22,3 +22,10 @@ plt.show()
 
 
 # %%
+corr = pd.read_csv(r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache\Beta_Callibration\pairwise_corr.csv').set_index('Ticker Pair')
+corr = corr.loc[:, ~corr.columns.str.contains('^Unnamed')]
+corr['Cross Correlation'] = corr['Cross Correlation'].split("\n")
+
+# %%
+type(corr['Cross Correlation'][0])
+# %%

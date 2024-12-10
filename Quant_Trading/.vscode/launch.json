@@ -11,7 +11,9 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "cwd":"C:\\Users\\raymo\\OneDrive\\Desktop\\Playground\\Financial-Modelling-Playground\\Quant_Trading"
+            "cwd":"C:\\Users\\raymo\\OneDrive\\Desktop\\Playground\\Financial-Modelling-Playground\\Quant_Trading",
+
         }
-    ]
+    ],
+    "terminal.integrated.defaultProfile.windows":"Powershell"
 }
