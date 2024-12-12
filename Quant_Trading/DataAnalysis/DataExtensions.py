@@ -63,21 +63,25 @@ def draw_slope_intercept_changes(prices, state_means):
 
 @staticmethod
 def findCointegratedPairs(df: pd.DataFrame, critical_level = 0.05):
-    n = dataframe.shape[1] # the length of dateframe
+    n = df.shape[1] # the length of dateframe
     pvalue_matrix = np.ones((n, n)) # initialize the matrix of p
-    keys = dataframe.columns # get the column names
+    keys = df.columns # get the column names
     pairs = [] # initilize the list for cointegration
     for i in range(n):
         for j in range(i+1, n): # for j bigger than i
-            stock1 = dataframe[keys[i]] # obtain the price of "stock1"
-            stock2 = dataframe[keys[j]]# obtain the price of "stock2"
+            stock1 = df[keys[i]] # obtain the price of "stock1"
+            stock2 = df[keys[j]]# obtain the price of "stock2"
             result = sm.tsa.stattools.coint(stock1, stock2) # get conintegration
             pvalue = result[1] # get the pvalue
             pvalue_matrix[i, j] = pvalue
-            if pvalue < critial_level: # if p-value less than the critical level
+            if pvalue < critical_level: # if p-value less than the critical level
                 pairs.append((keys[i], keys[j], pvalue)) # record the contract with that p-value
     return pvalue_matrix, pairs
 
 @staticmethod
-def calcHurst(df:pd.DataFrame):
-    return compute_Hc(df.dropna())
+def calcHurst(df:pd.DataFrame, x_name: str, y_name: str, mu: float):
+    """
+    Calculates Hurst Exponent of two time-series within a dataframe 
+    """
+    resid = df[y_name]-df[x_name]*mu
+    return compute_Hc(resid)
