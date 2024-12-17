@@ -79,7 +79,8 @@ class DBSCANwrapper(object):
             res[(eps, min_sample)] = test_score[score_idx]
             optimal_eps = eps
             optimal_minSample = min_sample
-        print("Optimal EPS: {0}, Optimal Minsample: {1}".format(optimal_eps, optimal_minSample ))
+            print("Running Test")
+        # print("Optimal EPS: {0}, Optimal Minsample: {1}".format(optimal_eps, optimal_minSample ))
 
         self.fit(self.X, optimal_eps, optimal_minSample)
         return None
@@ -136,6 +137,7 @@ class DBSCANwrapper(object):
 def main():
     beta = pd.read_csv(r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache\Beta_Callibration\^FTW5000_beta.csv').set_index('Ticker')
     beta = beta.loc[:, ~beta.columns.str.contains('^Unnamed')]
+    beta['Beta'] = [float(x.split(",")[0][1:]) for x in beta['Beta']]
     beta_mean = beta['Beta'].mean()
     beta_stdev = beta['Beta'].std()
     ### remove 6 six sigma names

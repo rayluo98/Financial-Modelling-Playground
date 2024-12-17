@@ -24,28 +24,71 @@ class PolygonAPI(object):
     def getStatics(self, 
                    tickers:list,
                    from_="2023-01-01", 
-                to_="2023-06-13"):
-        return []
+                    to_="2023-06-13",
+                    field_:str|None=None,
+                    _parallel = False,
+                    override=False):
+        statics = {}
+        errors = []
+        if _parallel:
+            with lock:
+                foundCache = False
+                if not override and logDir != None:
+                    files = glob.glob(os.path.join(logDir, ticker, "*_histo.csv"))
+                    if len(files) > 0:
+                        foundCache = True
+                        hist = pd.read_csv(files[0])
+                # get historical market data
+                if not foundCache:
+                    hist = pd.DataFrame(self.getData(ticker, multiplier, timespan, from_, to_, limit, attemptNo=0))
+                if logDir != None and not foundCache and len(hist) > 1:
+                    save_format = "{0}_{1}_{2}".format(ticker,
+                                    from_.replace("-",""),
+                                    to_.replace("-",""))
+                    save_format = "{0}_{1}".format(ticker, "histo")
+                    self._saveData(hist, ticker, save_format, logDir, override)
+                if len(hist) > 1:
+                    histo[ticker] = hist ## to replace with struct
+                return hist
+        else:
+            for ticker in tickers:
+                statics[ticker], errors[ticker] = self.getStatic(self, 
+                    ticker, 
+                    from_, 
+                    to_,
+                    field_)
+        return statics, errors
 
     def getStatic(self, 
                 ticker:str, 
                 from_="2023-01-01", 
-                to_="2023-06-13"):
+                to_="2023-06-13",
+                field_:str|None=None):
         statics = {}
         hasErr: bool = False
         _error = []
         start_dt = pd.Timestamp(from_)
         end_dt = pd.Timestamp(to_)
-        while(start_dt < end_dt):
+        while(start_dt <= end_dt):
             date = start_dt.strftime("%Y-%m-%d")
+            err = ""
             try:
-                statics[date]=self._client.get_ticker_details(ticker, date)
+                res =self._client.get_ticker_details(ticker, date)
+                if field_ == None:
+                    statics[date] = res
+                else:
+                    statics[date] = getattr(res, field_)
+            except AttributeError:
+                err = "{0} does not exist in statics!".format(field_)
             except:
-                logging.info("Ticker {0} Statucs unable to be loaded for {1}!".format(ticker, date))
+                err = "Ticker {0} Statics unable to be loaded for {1}!".format(ticker, date)
+            if err != "":
+                logging.info(err)
+                _error.append(err)
             start_dt += pd.offsets.BusinessDay(1)
             
-        return pd.DataFrame(statics)
-        
+        return pd.DataFrame(statics.items(), columns=['Timestamp', 'Static']), _error
+            
     def getPrices(self, 
                 tickers: list, multiplier:int = 1, 
                 timespan:str="minute", 
@@ -67,7 +110,7 @@ class PolygonAPI(object):
             with lock:
                 foundCache = False
                 if not override and logDir != None:
-                    files = glob.glob(os.path.join(logDir, ticker, "*.csv"))
+                    files = glob.glob(os.path.join(logDir, ticker, "*_histo.csv"))
                     if len(files) > 0:
                         foundCache = True
                         hist = pd.read_csv(files[0])
@@ -129,6 +172,52 @@ class PolygonAPI(object):
                 logging.info("Retrying for ticker {0}... Attempt {1}".format(ticker, attemptNo + 2))
                 return self.getData(ticker, timespan=timespan, from_=from_, to_=to_, limit=limit, attemptNo=attemptNo + 1)
         return aggs
+
+    def getOutstandingTs(self, tickers: list,
+                from_="2023-01-01", 
+                to_="2023-06-13", 
+                logDir:str|None = None, # r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_ErrorLogs',
+                _parallel = False,
+                override=False):
+        LE_STATIC = {}
+        def getOutstandings(ticker, from_, to_, LE_STATIC:dict, logDir:str|None=None, override:bool|None=None,lock:RLock=None):
+            with lock:           
+                dt = from_
+                res = {}
+                curr_outstanding = 0
+                _KEY = "share_class_shares_outstanding"
+                foundCache = False
+                if not override and logDir != None:
+                    files = glob.glob(os.path.join(logDir, ticker, "*_oa.csv"))
+                    if len(files) > 0:
+                        foundCache = True
+                        static = pd.read_csv(files[0])
+                # get historical market data
+                if not foundCache:
+                    static, _err = self.getStatic(ticker, from_, to_, _KEY)
+                if logDir != None and not foundCache and len(static) > 1:
+                    save_format = "{0}_{1}_{2}".format(ticker,
+                                    from_.replace("-",""),
+                                    to_.replace("-",""))
+                    save_format = "{0}_{1}".format(ticker, "oa")
+                    self._saveData(static, ticker, save_format, logDir, override)
+                if len(static) > 1:
+                    LE_STATIC[ticker] = static ## to replace with struct
+                return static
+        if _parallel:
+            lock = RLock()
+            func = lambda x: getOutstandings(x, from_, to_, LE_STATIC, logDir, override, lock)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+                #result = executor.map(functools.partial(loadHistory , tickers, LE_HISTO, lock))
+                executor.map(func, tickers)
+        else:
+            for ticker in tickers:
+                hist = getOutstandings(ticker, LE_STATIC)
+                if len(hist) > 0:
+                    LE_STATIC[ticker] = hist
+        return LE_STATIC
+
+
 
     def getLastTrade(self, ticker: str):
         # Get Last Trade
@@ -207,7 +296,7 @@ def main():
     _tickers = list(df[df.columns[0]])
 
     # truncate ticker 
-    startFrom = ""
+    startFrom = "AQMX"
     
     if startFrom != "":
         try:
@@ -216,15 +305,18 @@ def main():
             _startIndex = 0
         _tickers = _tickers[_startIndex:]
 
-    res = Client.getPrices(tickers=_tickers, _parallel = True, override=override, logDir=savDir)
-
+    cheat_check = [x[1] for x in os.walk(savDir)][0]
+    _tickers = list(set(cheat_check).intersection(set(_tickers)))
+    #files = glob.glob(os.path.join(savDir))
+    # res = Client.getPrices(tickers=_tickers, _parallel = True, override=override, logDir=savDir)
+    res = Client.getOutstandingTs(_tickers, start_dt, end_dt, savDir, True, False)
     # ## loading [avoid multithreading due to data parsing limit
     # for ticker in _tickers:
     #     if not override and os.path.exists(os.path.join(savDir, ticker)):
     #         continue
     #     Client._saveData(pd.DataFrame(Client.getData(ticker)), 
     #                          ticker, "{0}_{1}_{2}".format(ticker,
-    #                                     start_dt.replace("-",""),
+    #                                     start_dt.replace("-",""),tt
     #                                     end_dt.replace("-","")),
     #                         savDir)
     #     time.sleep(12) ## limit 5 api calls per minute

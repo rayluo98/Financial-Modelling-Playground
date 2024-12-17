@@ -7,10 +7,15 @@ from Clustering.DBSCAN import DBSCANwrapper
 from sklearn.preprocessing import StandardScaler 
 from sklearn.preprocessing import normalize
 from sklearn.decomposition import PCA 
+import pickle
+import os
 
+DIR = r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\Clustering'
 
-beta = pd.read_csv(r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache\Beta_Callibration\pairwise_beta.csv').set_index('Ticker Pair')
+beta = pd.read_csv(r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache\Beta_Callibration\^FTW5000_beta.csv').set_index('Ticker')
 beta = beta.loc[:, ~beta.columns.str.contains('^Unnamed')]
+beta['Beta'] = [float(x.split(",")[0][1:]) for x in beta['Beta']]
+beta
 # dbModel = DBSCANwrapper(beta)
 # dbModel._optimize("SC")
 
@@ -61,7 +66,7 @@ for pair in candidate_pairs:
     if ticker_list[0] not in corr_graph:
         corr_graph[ticker_list[0]] = [ticker_list[0]]
     corr_graph[ticker_list[0]].append(ticker_list[1])
-    
+        
 
 ## build cycles from graphs
 cycles = []
@@ -83,9 +88,11 @@ for root in corr_graph:
     if len(nbrs) > 1:
         cycles.append(nbrs)
 
-cycles
 # %%
-corr_graph
+with open(os.path.join(DIR, "correlation_buckets.pkl"), "wb") as f:
+    pickle.dump(corr_graph,f)
 # %%
 len(cycles)
+# %%
+corr_graph
 # %%

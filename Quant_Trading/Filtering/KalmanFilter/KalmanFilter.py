@@ -9,12 +9,10 @@ import sklearn
 import math
 from logging import Logger
 %matplotlib inline
-from statsmodels.tsa.stattools import adfuller
-from statsmodels.graphics import tsaplots 
+
 
 # Import Statsmodels
 from statsmodels.tsa.api import VAR
-from statsmodels.tsa.stattools import adfuller
 from statsmodels.tools.eval_measures import rmse, aic
 
 from hurst import compute_Hc
