@@ -11,7 +11,7 @@ import pickle
 import os
 
 DIR = r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\Clustering'
-
+ALLOW_SHORTS = True
 beta = pd.read_csv(r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache\Beta_Callibration\^FTW5000_beta.csv').set_index('Ticker')
 beta = beta.loc[:, ~beta.columns.str.contains('^Unnamed')]
 beta['Beta'] = [float(x.split(",")[0][1:]) for x in beta['Beta']]
@@ -20,11 +20,11 @@ beta
 # dbModel._optimize("SC")
 
 # %%
-mu = beta['Cross Beta'].mean()
-sigma = beta['Cross Beta'].std()
-# beta = beta[abs(beta['Cross Beta'] - mu) < 3*sigma]
-plt.plot(beta["Cross Beta"], np.zeros_like(beta["Cross Beta"]), '.')
-plt.show()
+# mu = beta['Cross Beta'].mean()
+# sigma = beta['Cross Beta'].std()
+# # beta = beta[abs(beta['Cross Beta'] - mu) < 3*sigma]
+# plt.plot(beta["Cross Beta"], np.zeros_like(beta["Cross Beta"]), '.')
+# plt.show()
 
 
 # %%
@@ -62,6 +62,8 @@ candidate_pairs = dict(filter(lambda item: abs(item[1]) > 0.9, candidate_pairs.i
 ### build graph relations between correlated names
 corr_graph = {}
 for pair in candidate_pairs:
+    if (candidate_pairs[pair] > 0 and not ALLOW_SHORTS):
+        continue
     ticker_list = pair.split(",")
     if ticker_list[0] not in corr_graph:
         corr_graph[ticker_list[0]] = [ticker_list[0]]
@@ -89,8 +91,12 @@ for root in corr_graph:
         cycles.append(nbrs)
 
 # %%
-with open(os.path.join(DIR, "correlation_buckets.pkl"), "wb") as f:
-    pickle.dump(corr_graph,f)
+if not ALLOW_SHORTS:
+    with open(os.path.join(DIR, "correlation_buckets_no_shorts.pkl"), "wb") as f:
+        pickle.dump(corr_graph,f)
+else:
+    with open(os.path.join(DIR, "correlation_buckets.pkl"), "wb") as f:
+        pickle.dump(corr_graph,f)
 # %%
 len(cycles)
 # %%

@@ -64,7 +64,10 @@ class mipEngine(object):
         for feature, df_row in coeffs.iterrows():
             self._model.add_constr(xsum(res_var[ticker] * df_row[ticker] for ticker in res_var) ==
                                    bounds[feature], feature)
-        ## need to add optimization function
+        ## need to add optimization function check
+
+    def _addOptimization(self, coeffs:pd.DataFrame):
+        self._model.objective()
 
 if __name__=="__main__":
     logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s: %(message)s',

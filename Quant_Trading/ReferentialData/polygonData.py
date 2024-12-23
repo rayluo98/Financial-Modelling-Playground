@@ -280,9 +280,9 @@ def main():
     Client = PolygonAPI()
     ## Load names to load 
     ## End Date
-    end_dt = "2024-12-01"
+    end_dt = "2024-12-10"
     ## Start date
-    start_dt = "2019-06-01"
+    start_dt = "2014-12-10"
     ## Frequency
     freq = "Hour"
     ### root folder
@@ -291,12 +291,15 @@ def main():
     override=False
 
     # Tickers to Load
-    _tickers = list(pd.read_csv(os.path.join(root_dir, 'clean_names.csv'))['0'])
-    df = pd.read_csv(os.path.join(root_dir, 'tickers.csv'))
-    _tickers = list(df[df.columns[0]])
+    # _tickers = list(pd.read_csv(os.path.join(root_dir, 'clean_names.csv'))['0'])
+    f = open(r'C:\Users\raymo\OneDrive\Desktop\russell_1000_companies.json',)
+    _tickers = [x['ticker'] for x in json.load(f)]
+    f.close()
+    # df = pd.read_csv(os.path.join(root_dir, 'tickers.csv'))
+    # _tickers = list(df[df.columns[0]])
 
     # truncate ticker 
-    startFrom = "AQMX"
+    startFrom = ""
     
     if startFrom != "":
         try:
@@ -306,10 +309,10 @@ def main():
         _tickers = _tickers[_startIndex:]
 
     cheat_check = [x[1] for x in os.walk(savDir)][0]
-    _tickers = list(set(cheat_check).intersection(set(_tickers)))
-    #files = glob.glob(os.path.join(savDir))
-    # res = Client.getPrices(tickers=_tickers, _parallel = True, override=override, logDir=savDir)
-    res = Client.getOutstandingTs(_tickers, start_dt, end_dt, savDir, True, False)
+    # _tickers = list(set(cheat_check).intersection(set(_tickers)))
+    files = glob.glob(os.path.join(savDir))
+    res = Client.getPrices(tickers=_tickers, from_ = start_dt, to_ = end_dt,  _parallel = True, override=override, logDir=savDir)
+    # res = Client.getOutstandingTs(_tickers, start_dt, end_dt, savDir, True, False)
     # ## loading [avoid multithreading due to data parsing limit
     # for ticker in _tickers:
     #     if not override and os.path.exists(os.path.join(savDir, ticker)):
@@ -329,9 +332,9 @@ def test():
     Client = PolygonAPI()
     ## Load names to load 
     ## End Date
-    end_dt = "2024-11-15"
+    end_dt = "2024-12-10"
     ## Start date
-    start_dt = "2022-07-10"
+    start_dt = "2014-12-10"
     ### root folder
     root_dir = r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\Histo'
     savDir=r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache'#'D:\DB_feed\AggData'
