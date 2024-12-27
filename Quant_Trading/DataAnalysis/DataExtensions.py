@@ -85,3 +85,28 @@ def calcHurst(df:pd.DataFrame, x_name: str, y_name: str, mu: float):
     """
     resid = df[y_name]-df[x_name]*mu
     return compute_Hc(resid)
+    
+@staticmethod
+def calcHurst(df:pd.DataFrame, df2:pd.DataFrame, mu: float):
+    """
+    Calculates Hurst Exponent of two time-series within a dataframe 
+    """
+    resid = df-df2*mu
+    return compute_Hc(resid)
+    
+
+@staticmethod
+def hurst(ts):
+    """Calculates the Hurst Exponent of the time series vector ts"""
+
+    # Create the range of lag values
+    lags = range(2, 100)
+
+    # Calculate the array of the variances of the lagged differences
+    tau = [np.sqrt(np.std(np.subtract(ts[lag:], ts[:-lag]))) for lag in lags]
+
+    # Use a linear fit to estimate the Hurst Exponent
+    poly = np.polyfit(np.log(lags), np.log(tau), 1)
+
+    # Return the Hurst exponent from the polyfit output
+    return poly[0] * 2.0

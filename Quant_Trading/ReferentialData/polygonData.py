@@ -282,19 +282,20 @@ def main():
     ## End Date
     end_dt = "2024-12-10"
     ## Start date
-    start_dt = "2014-12-10"
+    start_dt = "2019-12-10"
     ## Frequency
-    freq = "Hour"
+    freq = "day"
     ### root folder
     root_dir = r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\Histo'
     savDir=r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache'#'D:\DB_feed\AggData'
-    override=False
+    override=True
 
     # Tickers to Load
     # _tickers = list(pd.read_csv(os.path.join(root_dir, 'clean_names.csv'))['0'])
-    f = open(r'C:\Users\raymo\OneDrive\Desktop\russell_1000_companies.json',)
-    _tickers = [x['ticker'] for x in json.load(f)]
-    f.close()
+    _tickers = ['^FTW5000']
+    # f = open(r'C:\Users\raymo\OneDrive\Desktop\russell_1000_companies.json',)
+    # _tickers = [x['ticker'] for x in json.load(f)]
+    # f.close()
     # df = pd.read_csv(os.path.join(root_dir, 'tickers.csv'))
     # _tickers = list(df[df.columns[0]])
 
@@ -311,7 +312,8 @@ def main():
     cheat_check = [x[1] for x in os.walk(savDir)][0]
     # _tickers = list(set(cheat_check).intersection(set(_tickers)))
     files = glob.glob(os.path.join(savDir))
-    res = Client.getPrices(tickers=_tickers, from_ = start_dt, to_ = end_dt,  _parallel = True, override=override, logDir=savDir)
+    res = Client.getPrices(tickers=_tickers, from_ = start_dt, to_ = end_dt, 
+                           timespan=freq, _parallel = True, override=override, logDir=savDir)
     # res = Client.getOutstandingTs(_tickers, start_dt, end_dt, savDir, True, False)
     # ## loading [avoid multithreading due to data parsing limit
     # for ticker in _tickers:
