@@ -2,7 +2,7 @@ from abc import abstractmethod
 
 import concurrent
 import pandas as pd
-import BetaFactory
+from BetaModels.BetaFactory import BetaFactory
 import os
 import sys
 import numpy as np
@@ -33,7 +33,7 @@ def estimate_coef(x, y):
 
     return (b_0, b_1)
 
-class BetaCovFactory(BetaFactory.BetaFactory):
+class BetaCovFactory(BetaFactory):
 
     def __init__(self, benchmark, parallel = False):
         self._benchmark = benchmark

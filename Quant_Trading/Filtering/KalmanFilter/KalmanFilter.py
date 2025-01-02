@@ -23,6 +23,37 @@ class KalmanFilter(object):
     def __init__(self, data):
         self.data = data
         self.signal = data
+        self.kf = None
+
+    def UnivariateKF(name, df, init_mu = 0, init_cov = 1):
+        """
+        """
+        # delta = 1e-5
+        # trans_cov = delta / (1 - delta) * np.eye(2)
+        # obs_mat = np.vstack(
+        #     [df[names[0]], np.ones(df[names[0]].shape)]
+        # ).T[:, np.newaxis]
+        
+        kf = pykalman.KalmanFilter(transition_matrices = [1],
+                    observation_matrices = [1],
+                    initial_state_mean = init_mu,
+                    initial_state_covariance = init_cov,
+                    observation_covariance=init_cov,
+                    transition_covariance=.0001)
+
+        mean, cov = kf.filter(df[name])
+        # mean, std = mean.squeeze(), np.std(cov.squeeze())
+
+        # plt.figure(figsize=(15,7))
+        # plt.plot(df[name] - mean, 'm', lw=1)
+        # plt.plot(np.sqrt(cov.squeeze()), 'y', lw=1)
+        # plt.plot(-np.sqrt(cov.squeeze()), 'c', lw=1)
+        # plt.title('Kalman filter estimate')
+        # plt.legend(['Error: real_value - mean', 'std', '-std'])
+        # plt.xlabel('Day')
+        # plt.ylabel('Value')
+        
+        return mean, cov
 
     def calc_slope_intercept_kalman(names, df):
         """
