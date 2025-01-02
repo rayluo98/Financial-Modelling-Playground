@@ -110,3 +110,40 @@ def hurst(ts):
 
     # Return the Hurst exponent from the polyfit output
     return poly[0] * 2.0
+
+@staticmethod
+def findOutliers(ts: pd.Series,
+                 mode: str='ZScore',
+                 params: dict={}
+                 )->list:
+    """
+    Finds the indices of values where there is an outlier
+    Returns a list of tuples of beginning of outlier to end 
+    """
+    match mode:
+        case _:
+            return zscoreOutliers(ts, params)
+    return
+
+@staticmethod
+def zscoreOutliers(ts: pd.Series,
+                   params: dict={}):
+    res = []
+    mu = np.mean(ts)
+    sigma = np.std(ts)
+    if 'std' in params:
+        sigma *= params['std']
+    outlierFlag = False
+    start = 0
+    end = 0
+    for key, val in ts.items():
+        if (abs(val - mu) > sigma):
+            if not outlierFlag:
+                start = key 
+                outlierFlag = True
+        else:
+            if outlierFlag:
+                end = key
+                outlierFlag = False
+                res.append((start, end))
+    return res
