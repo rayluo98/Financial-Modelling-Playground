@@ -39,7 +39,7 @@ class KalmanFilter(object):
                     initial_state_mean = init_mu,
                     initial_state_covariance = init_cov,
                     observation_covariance=init_cov,
-                    transition_covariance=.0001)
+                    transition_covariance=1)
 
         mean, cov = kf.filter(df[name])
         # mean, std = mean.squeeze(), np.std(cov.squeeze())
