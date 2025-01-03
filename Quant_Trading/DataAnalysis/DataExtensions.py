@@ -147,3 +147,29 @@ def zscoreOutliers(ts: pd.Series,
                 outlierFlag = False
                 res.append((start, end))
     return res
+
+@staticmethod
+def datetime_to_ms_epoch(dt):
+    microseconds = time.mktime(dt.timetuple()) * 1000000 + dt.microsecond
+    return int(round(microseconds / float(1000)))
+
+@staticmethod
+def get_unixtime(dt64):
+    return dt64.astype('datetime64[s]').astype('int')
+
+@staticmethod
+def shift(xs, n):
+    if n >= 0:
+        return np.concatenate((np.full(n, np.nan), xs[:-n]))
+    else:
+        return np.concatenate((xs[-n:], np.full(-n, np.nan)))
+    
+@staticmethod
+def getTimeDiffs(dt_list: np.array):
+    ## case to ms unix tyime
+    if type(dt_list[0]) == np.datetime64:
+        dt_list = get_unixtime(dt_list)
+    shifted_dt = np.roll(dt_list, 1)
+    res = dt_list - shifted_dt
+    res[0] = 0 ## as this makes no sense
+    return res

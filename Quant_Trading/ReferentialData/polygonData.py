@@ -9,6 +9,7 @@ import concurrent.futures
 from threading import Thread
 from threading import RLock
 from pathlib import Path
+from DataAnalysis import DataExtensions
 import glob
 
 class PolygonAPI(object):
@@ -309,7 +310,27 @@ class PolygonAPI(object):
         df.to_csv(Path(loc_dir) / f"{file_name}.csv", index=False)
         logging.info("Finished Saving {0}".format(file_name))
         
+def applySplitPricing(df: pd.DataFrame, splits: pd.DataFrame):
+    splits['execution_date'] = DataExtensions.datetime_to_ms_epoch(pd.to_datetime(splits['execution_date']))
+    splits = splits.sort_values('execution_date')
+    splits['ratio'] = splits['split_from']/splits['split_to']
+    df = pd.merge_asof(splits, left_on = 'timestamp', 
+                        right_on = 'execution_date')
+    applySplit = lambda dr : dr * df['ratio']
+    df['open'] = df['open'].apply(applySplit, axis = 0)
+    df['close'] = df['close'].apply(applySplit, axis = 0)
+    df['high'] = df['high'].apply(applySplit, axis = 0)
+    df['low'] = df['low'].apply(applySplit, axis = 0)
+    df['vwap'] = df['vwap'].apply(applySplit, axis = 0)
+    return df
 
+def adjust_histo_to_splits(histo: dict, splits: dict):
+    adjusted_res = {}
+    for ticker in histo:
+        if ticker in splits:
+            adjusted_res[ticker] = applySplitPricing(histo[ticker], splits[ticker])
+    return adjusted_res
+    
 # Defining main function
 def main():
     Client = PolygonAPI()
@@ -319,7 +340,7 @@ def main():
     ## Start date
     start_dt = "2019-12-10"
     ## Frequency
-    freq = "day"
+    freq = "hour"
     ### root folder
     root_dir = r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\Histo'
     savDir=r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache'#'D:\DB_feed\AggData'
@@ -347,19 +368,24 @@ def main():
     cheat_check = [x[1] for x in os.walk(savDir)][0]
     # _tickers = list(set(cheat_check).intersection(set(_tickers)))
     files = glob.glob(os.path.join(savDir))
-    # res = Client.getPrices(tickers=_tickers, from_ = start_dt, to_ = end_dt, 
-    #                        timespan=freq, _parallel = True, override=override, logDir=savDir)
+    prices = Client.getPrices(tickers=_tickers, from_ = start_dt, to_ = end_dt, 
+                           timespan=freq, _parallel = True, override=override, logDir=savDir)
     # res = Client.getOutstandingTs(_tickers, start_dt, end_dt, savDir, True, False)
-    res = Client.getSplitTs(_tickers, savDir, False, False)
-    # ## loading [avoid multithreading due to data parsing limit
-    # for ticker in _tickers:
-    #     if not override and os.path.exists(os.path.join(savDir, ticker)):
-    #         continue
-    #     Client._saveData(pd.DataFrame(Client.getData(ticker)), 
-    #                          ticker, "{0}_{1}_{2}".format(ticker,
-    #                                     start_dt.replace("-",""),tt
-    #                                     end_dt.replace("-","")),
-    #                         savDir)
+    splits = Client.getSplitTs(_tickers, savDir, False, False)
+
+    res = adjust_histo_to_splits(prices, splits)
+    ## loading [avoid multithreading due to data parsing limit
+    for ticker in _tickers:
+        if not override and os.path.exists(os.path.join(savDir, ticker)):
+            continue
+        if ticker not in res:
+            continue
+        Client._saveData(pd.DataFrame(res[ticker]), 
+                             ticker, "{0}_{1}_{2}_{3}".format(ticker,
+                                        start_dt.replace("-",""),
+                                        end_dt.replace("-",""),
+                                        "SplitAdjusted"),
+                            savDir)
     #     time.sleep(12) ## limit 5 api calls per minute
 
     # PolygonAPI._removeEmptyFiles(savDir)
