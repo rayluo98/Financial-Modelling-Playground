@@ -27,9 +27,11 @@ class PolygonAPI(object):
                     to_="2023-06-13",
                     field_:str|None=None,
                     _parallel = False,
-                    override=False):
+                    override=False,
+                    logDir:str=r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_ErrorLogs'):
         statics = {}
         errors = []
+        lock = RLock()
         if _parallel:
             with lock:
                 foundCache = False
@@ -173,6 +175,41 @@ class PolygonAPI(object):
                 return self.getData(ticker, timespan=timespan, from_=from_, to_=to_, limit=limit, attemptNo=attemptNo + 1)
         return aggs
 
+    def getSplitTs(self, tickers: list,
+                logDir:str|None = None, # r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_ErrorLogs',
+                _parallel = False,
+                override=False):
+        LE_SPLITS = {}
+        def getSplit(ticker, LE_SPLITS:dict, logDir:str|None=None, override:bool|None=None,lock:RLock=None):
+            with lock:
+                foundCache = False
+                if not override and logDir != None:
+                    files = glob.glob(os.path.join(logDir, ticker, "*_split.csv"))
+                    if len(files) > 0:
+                        foundCache = True
+                        split = pd.read_csv(files[0])
+                # get historical market data
+                if not foundCache:
+                    split = pd.DataFrame(json.loads(self._client.list_splits(ticker, raw=True).data)['results'])
+                if logDir != None and not foundCache and len(split) > 1:
+                    save_format = "{0}_{1}".format(ticker, "split")
+                    self._saveData(split, ticker, save_format, logDir, override)
+                if len(split) > 1:
+                    LE_SPLITS[ticker] = split ## to replace with struct
+                return split
+        lock = RLock()
+        if _parallel:
+            func = lambda x: getSplit(x, LE_SPLITS, logDir, override, lock)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+                #result = executor.map(functools.partial(loadHistory , tickers, LE_HISTO, lock))
+                executor.map(func, tickers)
+        else:
+            for ticker in tickers:
+                hist = getSplit(ticker, LE_SPLITS, logDir, lock=lock)
+                if len(hist) > 0:
+                    LE_SPLITS[ticker] = hist
+        return LE_SPLITS
+
     def getOutstandingTs(self, tickers: list,
                 from_="2023-01-01", 
                 to_="2023-06-13", 
@@ -216,8 +253,6 @@ class PolygonAPI(object):
                 if len(hist) > 0:
                     LE_STATIC[ticker] = hist
         return LE_STATIC
-
-
 
     def getLastTrade(self, ticker: str):
         # Get Last Trade
@@ -271,7 +306,7 @@ class PolygonAPI(object):
         loc_dir = os.path.join(path, ticker)
         if not os.path.exists(loc_dir):
             os.mkdir(loc_dir)
-        df.to_csv(Path(loc_dir) / f"{file_name}.csv")
+        df.to_csv(Path(loc_dir) / f"{file_name}.csv", index=False)
         logging.info("Finished Saving {0}".format(file_name))
         
 
@@ -291,8 +326,8 @@ def main():
     override=True
 
     # Tickers to Load
-    # _tickers = list(pd.read_csv(os.path.join(root_dir, 'clean_names.csv'))['0'])
-    _tickers = ['^FTW5000']
+    _tickers = list(pd.read_csv(os.path.join(root_dir, 'clean_names.csv'))['0'])
+    # _tickers = ['VIXY']
     # f = open(r'C:\Users\raymo\OneDrive\Desktop\russell_1000_companies.json',)
     # _tickers = [x['ticker'] for x in json.load(f)]
     # f.close()
@@ -312,9 +347,10 @@ def main():
     cheat_check = [x[1] for x in os.walk(savDir)][0]
     # _tickers = list(set(cheat_check).intersection(set(_tickers)))
     files = glob.glob(os.path.join(savDir))
-    res = Client.getPrices(tickers=_tickers, from_ = start_dt, to_ = end_dt, 
-                           timespan=freq, _parallel = True, override=override, logDir=savDir)
+    # res = Client.getPrices(tickers=_tickers, from_ = start_dt, to_ = end_dt, 
+    #                        timespan=freq, _parallel = True, override=override, logDir=savDir)
     # res = Client.getOutstandingTs(_tickers, start_dt, end_dt, savDir, True, False)
+    res = Client.getSplitTs(_tickers, savDir, False, False)
     # ## loading [avoid multithreading due to data parsing limit
     # for ticker in _tickers:
     #     if not override and os.path.exists(os.path.join(savDir, ticker)):
