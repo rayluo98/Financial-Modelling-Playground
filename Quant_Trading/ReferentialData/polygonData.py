@@ -311,17 +311,28 @@ class PolygonAPI(object):
         logging.info("Finished Saving {0}".format(file_name))
         
 def applySplitPricing(df: pd.DataFrame, splits: pd.DataFrame):
-    splits['execution_date'] = DataExtensions.datetime_to_ms_epoch(pd.to_datetime(splits['execution_date']))
+    splits = splits.loc[:,~splits.columns.str.contains("^Unnamed")]   
+    splits['execution_date'] = pd.to_datetime(splits['execution_date'])
+    splits.loc[len(splits)] = [pd.to_datetime(df.loc[0,'timestamp'], unit = 'ms'),
+                            "DUMMY",
+                            1,
+                            1,
+                            "DUMMY"]
     splits = splits.sort_values('execution_date')
+    splits = splits[splits['execution_date'] >= pd.to_datetime(df.loc[0,'timestamp'], unit = 'ms')]
     splits['ratio'] = splits['split_from']/splits['split_to']
-    df = pd.merge_asof(splits, left_on = 'timestamp', 
-                        right_on = 'execution_date')
-    applySplit = lambda dr : dr * df['ratio']
-    df['open'] = df['open'].apply(applySplit, axis = 0)
-    df['close'] = df['close'].apply(applySplit, axis = 0)
-    df['high'] = df['high'].apply(applySplit, axis = 0)
-    df['low'] = df['low'].apply(applySplit, axis = 0)
-    df['vwap'] = df['vwap'].apply(applySplit, axis = 0)
+    splits['ratio'] = splits['ratio']
+    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+    df = pd.merge_asof(df,splits,   
+                        right_on = 'execution_date',
+                        left_on = 'timestamp')
+    def applySplit(dr):
+        return dr * df['ratio']
+    df['open'] = applySplit(df['open'])
+    df['close'] = applySplit(df['close'])
+    df['high'] = applySplit(df['high'])
+    df['low'] = applySplit(df['low'])
+    df['vwap'] = applySplit(df['vwap'])
     return df
 
 def adjust_histo_to_splits(histo: dict, splits: dict):
@@ -344,7 +355,7 @@ def main():
     ### root folder
     root_dir = r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\Histo'
     savDir=r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache'#'D:\DB_feed\AggData'
-    override=True
+    override=False
 
     # Tickers to Load
     _tickers = list(pd.read_csv(os.path.join(root_dir, 'clean_names.csv'))['0'])
@@ -376,7 +387,7 @@ def main():
     res = adjust_histo_to_splits(prices, splits)
     ## loading [avoid multithreading due to data parsing limit
     for ticker in _tickers:
-        if not override and os.path.exists(os.path.join(savDir, ticker)):
+        if False and os.path.exists(os.path.join(savDir, ticker)):
             continue
         if ticker not in res:
             continue

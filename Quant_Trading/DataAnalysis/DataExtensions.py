@@ -7,6 +7,7 @@ import pandas as pd
 import seaborn as sns
 import statsmodels as sm
 from hurst import compute_Hc
+import time
 
 @staticmethod
 def scatterByDate(names, prices):
