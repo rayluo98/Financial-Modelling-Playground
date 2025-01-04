@@ -11,7 +11,7 @@ import pickle
 import os
 
 DIR = r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\Clustering'
-ALLOW_SHORTS = True
+ALLOW_SHORTS = False
 beta = pd.read_csv(r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache\Beta_Callibration\^FTW5000_beta.csv').set_index('Ticker')
 beta = beta.loc[:, ~beta.columns.str.contains('^Unnamed')]
 beta['Beta'] = [float(x.split(",")[0][1:]) for x in beta['Beta']]

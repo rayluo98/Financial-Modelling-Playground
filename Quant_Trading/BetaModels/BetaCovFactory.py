@@ -106,15 +106,15 @@ class BetaCovFactory(BetaFactory):
 def main():
     ## Load names to load 
     ## End Date
-    end_dt = "2024-11-22"
+    end_dt = "2025-01-01"
     ## Start date
-    start_dt = "2022-11-22"
+    start_dt = "2020-01-01"
     ## Frequency
     freq = "day"
     ### root folder
     root_dir = r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\Histo'
     savDir=r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache\Beta_Callibration'#'D:\DB_feed\AggData'
-    override=False
+    override=True
     bm_ticker = "^FTW5000"
     Client = polygonData.PolygonAPI()
     # Tickers to Load
@@ -126,7 +126,7 @@ def main():
     yf_res = yf.Ticker(bm_ticker)
     info = yf_res.info
     # get historical market data
-    hist = yf_res.history(interval="1D", period='2y').rename(columns={'Close':bm_ticker})
+    hist = yf_res.history(interval="1D", period='5y').rename(columns={'Close':bm_ticker})
     hist = hist.tz_localize(None)
     #hist.index = hist.index.normalize()
     bm_data = hist[[bm_ticker]]
@@ -152,9 +152,10 @@ def main():
 
     betaFactory = BetaCovFactory(bm_data, parallel=True)
 
-    ### preload data
-    #Client.getPrices(tickers=_tickers, _parallel = True, override=override, logDir=savDir)
-    ###
+    ## preload data
+    Client.getPrices(tickers=_tickers, _parallel = True,
+                     timespan=freq, override=override, logDir=savDir)
+    ##
 
     for ticker in _tickers:
         loaded = False
@@ -162,12 +163,10 @@ def main():
             continue
             
         save_format = "{0}_{1}".format(ticker, "histo")
-        if os.path.exists(os.path.join(savDir, ticker)):
+        if not override and os.path.exists(os.path.join(savDir, ticker)):
             try:
                 temp = pd.read_csv(os.path.join(savDir, ticker, 
                                             save_format+".csv"))
-                temp['timestamp'] = temp['timestamp'].apply(lambda str: dt.datetime.strptime(str, "%Y-%m-%d"))
-                temp = temp.set_index("timestamp")
                 loaded = True
             except:
                 logging.info("{0} failed to load...".format(ticker))
@@ -179,17 +178,16 @@ def main():
                         end_dt))
             if (len(temp) == 0):
                 continue
-            
-            temp['timestamp'] = pd.to_datetime(temp['timestamp'], unit='ms').dt.normalize()
-            temp = temp.set_index("timestamp")[["close"]].rename(columns={"close":ticker})
-            temp[ticker] = np.log(temp[ticker]) - np.log(temp[ticker].shift(1))
-            temp = temp[1:]
             polygonData.PolygonAPI._saveData(temp, 
                             ticker, save_format,
                             savDir)
             loaded = True
             # truncate ticker 
         if loaded:
+            temp['timestamp'] = pd.to_datetime(temp['timestamp'], unit='ms').dt.normalize()
+            temp = temp.set_index("timestamp")[["close"]].rename(columns={"close":ticker})
+            temp[ticker] = np.log(temp[ticker]) - np.log(temp[ticker].shift(1))
+            temp = temp[1:]
             beta_res[ticker] = betaFactory.calculateBeta(temp)
             betaFactory.joinUniverse(temp)
     pd.DataFrame(beta_res.items(), columns=['Ticker', 'Beta']).to_csv(os.path.join(savDir, "{0}_beta.csv".format(bm_ticker)))

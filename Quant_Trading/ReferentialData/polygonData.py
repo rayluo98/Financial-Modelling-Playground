@@ -97,6 +97,7 @@ class PolygonAPI(object):
                 timespan:str="minute", 
                 from_="2023-01-01", 
                 to_="2023-06-13", 
+                include_splits=True,
                 limit=50000,
                 logDir:str|None = None, # r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_ErrorLogs',
                 _parallel = False,
@@ -109,7 +110,7 @@ class PolygonAPI(object):
         result = {}
 
          ## inline loadHistory - TODO: make this function abstract factory class
-        def loadHistory(ticker: str, histo: dict, lock:RLock=None, override:bool=False):
+        def loadHistory(ticker: str, histo: dict, lock:RLock=None, override:bool=False, include_splits=True):
             with lock:
                 foundCache = False
                 if not override and logDir != None:
@@ -119,7 +120,7 @@ class PolygonAPI(object):
                         hist = pd.read_csv(files[0])
                 # get historical market data
                 if not foundCache:
-                    hist = pd.DataFrame(self.getData(ticker, multiplier, timespan, from_, to_, limit, attemptNo=0))
+                    hist = pd.DataFrame(self.getData(ticker, multiplier, timespan, from_, to_, limit, include_splits, attemptNo=0))
                 if logDir != None and not foundCache and len(hist) > 1:
                     save_format = "{0}_{1}_{2}".format(ticker,
                                     from_.replace("-",""),
@@ -132,13 +133,13 @@ class PolygonAPI(object):
 
         if _parallel:
             lock = RLock()
-            func = lambda x: loadHistory(x, LE_HISTO, lock, override)
+            func = lambda x: loadHistory(x, LE_HISTO, lock, override, include_splits)
             with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
                 #result = executor.map(functools.partial(loadHistory , tickers, LE_HISTO, lock))
                 executor.map(func, tickers)
         else:
             for ticker in tickers:
-                hist = loadHistory(ticker, LE_HISTO)
+                hist = loadHistory(ticker, LE_HISTO, include_splits=include_splits)
                 if len(hist) > 0:
                     LE_HISTO[ticker] = hist
                 time.sleep(12) ## limit 5 api calls per minute
@@ -151,13 +152,16 @@ class PolygonAPI(object):
                 from_="2023-01-01", 
                 to_="2023-06-13", 
                 limit=50000,
+                include_splits=True,
                 attemptNo = 0):
     # List Aggregates (Bars)
         aggs = []
         hasErr: bool = False
         _error = []
         try:
-            for a in self._client.list_aggs(ticker=ticker, multiplier=1, timespan=timespan, from_=from_, to=to_, limit=limit):
+            for a in self._client.list_aggs(ticker=ticker, multiplier=1, 
+                                            timespan=timespan, from_=from_, to=to_, 
+                                            limit=limit, adjusted=include_splits):
                 aggs.append(a)
             if len(aggs) == 0:
                 if attemptNo > 2:
@@ -166,7 +170,7 @@ class PolygonAPI(object):
                 else:
                     time.sleep(5)
                     logging.info("Retrying for ticker {0}... Attempt {1}".format(ticker, attemptNo + 2))
-                    return self.getData(ticker, timespan=timespan, from_=from_, to_=to_, limit=limit, attemptNo=attemptNo + 1)
+                    return self.getData(ticker, timespan=timespan, from_=from_, to_=to_, limit=limit, include_splits=include_splits, attemptNo=attemptNo + 1)
         except:
             if attemptNo > 2:
                 logging.info("No data loaded for Ticker {0}".format(ticker))
@@ -295,6 +299,16 @@ class PolygonAPI(object):
         return None
     
     @staticmethod
+    def _removeFilesByName(path: str=r'D:\DB_feed\AggData',
+                           name: str="", threshold: str = 1000):
+        for root, dirs, files in os.walk(path, topdown=True, onerror=None, followlinks=False):
+            if (len(files) == 0):
+                continue
+                path = os.path.join(root, dirs, files)
+                os.remove(path)
+        return None
+    
+    @staticmethod
     def _jsonToDf(json:dict):
         return pd.DataFrame(json['result'])
 
@@ -313,15 +327,16 @@ class PolygonAPI(object):
 def applySplitPricing(df: pd.DataFrame, splits: pd.DataFrame):
     splits = splits.loc[:,~splits.columns.str.contains("^Unnamed")]   
     splits['execution_date'] = pd.to_datetime(splits['execution_date'])
-    splits.loc[len(splits)] = [pd.to_datetime(df.loc[0,'timestamp'], unit = 'ms'),
+    start_dt = '1990-01-01' #pd.to_datetime(df.loc[0,'timestamp']
+    splits.loc[len(splits)] = [pd.to_datetime(start_dt),
                             "DUMMY",
                             1,
                             1,
                             "DUMMY"]
     splits = splits.sort_values('execution_date')
-    splits = splits[splits['execution_date'] >= pd.to_datetime(df.loc[0,'timestamp'], unit = 'ms')]
+    # splits = splits[splits['execution_date'] >= pd.to_datetime(df.loc[0,'timestamp'], unit = 'ms')]
     splits['ratio'] = splits['split_from']/splits['split_to']
-    splits['ratio'] = splits['ratio']
+    splits['ratio'] = splits['ratio'].cumprod()
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
     df = pd.merge_asof(df,splits,   
                         right_on = 'execution_date',
@@ -347,15 +362,16 @@ def main():
     Client = PolygonAPI()
     ## Load names to load 
     ## End Date
-    end_dt = "2024-12-10"
+    end_dt = "2025-01-01"
     ## Start date
-    start_dt = "2019-12-10"
+    start_dt = "2020-01-01"
     ## Frequency
     freq = "hour"
     ### root folder
     root_dir = r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\Histo'
     savDir=r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache'#'D:\DB_feed\AggData'
-    override=False
+    override=True
+    include_splits=False
 
     # Tickers to Load
     _tickers = list(pd.read_csv(os.path.join(root_dir, 'clean_names.csv'))['0'])
@@ -380,9 +396,10 @@ def main():
     # _tickers = list(set(cheat_check).intersection(set(_tickers)))
     files = glob.glob(os.path.join(savDir))
     prices = Client.getPrices(tickers=_tickers, from_ = start_dt, to_ = end_dt, 
-                           timespan=freq, _parallel = True, override=override, logDir=savDir)
+                           timespan=freq, _parallel = True, 
+                           include_splits=include_splits,override=override, logDir=None)
     # res = Client.getOutstandingTs(_tickers, start_dt, end_dt, savDir, True, False)
-    splits = Client.getSplitTs(_tickers, savDir, False, False)
+    splits = Client.getSplitTs(_tickers, None, False, False)
 
     res = adjust_histo_to_splits(prices, splits)
     ## loading [avoid multithreading due to data parsing limit
@@ -407,9 +424,9 @@ def test():
     Client = PolygonAPI()
     ## Load names to load 
     ## End Date
-    end_dt = "2024-12-10"
+    end_dt = "2025-01-01"
     ## Start date
-    start_dt = "2014-12-10"
+    start_dt = "2020-01-01"
     ### root folder
     root_dir = r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\Histo'
     savDir=r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache'#'D:\DB_feed\AggData'
@@ -418,6 +435,25 @@ def test():
     temp = Client.getStatic(ticker,
                          start_dt,
                          end_dt)
+    
+### file renaming script
+def rename():
+    root_dir = r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\Histo'
+    savDir=r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache'#'D:\DB_feed\AggData'
+    _tickers = list(pd.read_csv(os.path.join(root_dir, 'clean_names.csv'))['0'])
+    for ticker in _tickers:
+        if not os.path.exists(os.path.join(savDir, ticker)):
+            continue
+        new_name = "{0}_histo.csv".format(ticker)
+        end_dt = "2024-12-10"
+        start_dt = "2019-12-10"
+        old_name = "{0}_{1}_{2}_{3}".format(ticker,
+                                            start_dt.replace("-",""),
+                                            end_dt.replace("-",""),
+                                            "SplitAdjusted.csv")
+        file_temp = pd.read_csv(os.path.join(savDir, ticker, old_name))
+        file_temp.to_csv(os.path.join(savDir,ticker,new_name), index=False)
+
 # Using the special variable 
 # __name__
 if __name__=="__main__":
