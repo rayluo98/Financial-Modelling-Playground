@@ -138,7 +138,7 @@ class Book:
         correctedOrders = pd.merge_asof(price_history, orderBook, on="Date", by=["Ticker"])
         correctedOrders["Value"] = correctedOrders.apply(lambda dr: dr["Price"] * dr["Quantity"], axis=1)
         correctedOrders["UnrealizedPnL"] = correctedOrders["Value"] - correctedOrders["CostBasis"]
-        correctedOrders.to_csv(r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Basket Trade\debug.csv')
+        correctedOrders.to_csv(r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\debug.csv')
         correctedOrders =correctedOrders.filter(["Date", "Ticker", "CostBasis", "Value", "UnrealizedPnL", "Cash"])
         cls.history = correctedOrders.groupby("Date").agg(CostBasis=("CostBasis", "sum"),
                                                            Value=("Value", "sum"),
