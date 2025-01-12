@@ -107,10 +107,12 @@ class PolygonAPI(object):
         # keys: ticker name
         # values: (info, history)
         LE_HISTO = dict() 
+        _error = dict()
         result = {}
 
          ## inline loadHistory - TODO: make this function abstract factory class
-        def loadHistory(ticker: str, histo: dict, lock:RLock=None, override:bool=False, include_splits=True):
+        def loadHistory(ticker: str, histo: dict, error:dict,
+                        lock:RLock=None, override:bool=False, include_splits=True):
             with lock:
                 foundCache = False
                 if not override and logDir != None:
@@ -129,21 +131,23 @@ class PolygonAPI(object):
                     self._saveData(hist, ticker, save_format, logDir, override)
                 if len(hist) > 1:
                     histo[ticker] = hist ## to replace with struct
+                else:
+                    _error[ticker] = "Failed to load data for {ticker}"
                 return hist
 
         if _parallel:
             lock = RLock()
-            func = lambda x: loadHistory(x, LE_HISTO, lock, override, include_splits)
+            func = lambda x: loadHistory(x, LE_HISTO, _error, lock, override, include_splits)
             with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
                 #result = executor.map(functools.partial(loadHistory , tickers, LE_HISTO, lock))
                 executor.map(func, tickers)
         else:
             for ticker in tickers:
-                hist = loadHistory(ticker, LE_HISTO, include_splits=include_splits)
+                hist = loadHistory(ticker, LE_HISTO, _error, include_splits=include_splits)
                 if len(hist) > 0:
                     LE_HISTO[ticker] = hist
                 time.sleep(12) ## limit 5 api calls per minute
-        return LE_HISTO
+        return LE_HISTO,  _error
 
 
     def getData(self, 
@@ -156,8 +160,6 @@ class PolygonAPI(object):
                 attemptNo = 0):
     # List Aggregates (Bars)
         aggs = []
-        hasErr: bool = False
-        _error = []
         try:
             for a in self._client.list_aggs(ticker=ticker, multiplier=1, 
                                             timespan=timespan, from_=from_, to=to_, 
@@ -309,6 +311,15 @@ class PolygonAPI(object):
         return None
     
     @staticmethod
+    def _saveErrors(path,
+                    _errors: dict,
+                    valueDate):
+        error_path = os.path.join(path, "_Errors")
+        if not os.path.exists(error_path):
+            os.makedirs(error_path)
+        pd.DataFrame(_errors.items(), columns=['Ticker','Logs']).to_csv(os.path.join(error_path, "Errors_{valueDate}.csv"))
+    
+    @staticmethod
     def _jsonToDf(json:dict):
         return pd.DataFrame(json['result'])
 
@@ -370,11 +381,17 @@ def main():
     ### root folder
     root_dir = r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\Histo'
     savDir=r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache'#'D:\DB_feed\AggData'
-    override=True
+    override=False
     include_splits=False
 
     # Tickers to Load
-    _tickers = list(pd.read_csv(os.path.join(root_dir, 'clean_names.csv'))['0'])
+    # _tickers = list(pd.read_csv(os.path.join(root_dir, 'clean_names.csv'))['0'])
+    _ticker_df = pd.read_excel(r'C:\Users\raymo\OneDrive\Desktop\Copy of Russell 1000 Composition.xlsx')
+    _tickers= []
+    for date in _ticker_df:
+        ticker_strip = _ticker_df[date].values
+        _tickers.extend([str(x).split(" ")[0] for x in ticker_strip])
+    _tickers = list(set(_tickers))
     # _tickers = ['VIXY']
     # f = open(r'C:\Users\raymo\OneDrive\Desktop\russell_1000_companies.json',)
     # _tickers = [x['ticker'] for x in json.load(f)]
@@ -395,16 +412,18 @@ def main():
     cheat_check = [x[1] for x in os.walk(savDir)][0]
     # _tickers = list(set(cheat_check).intersection(set(_tickers)))
     files = glob.glob(os.path.join(savDir))
-    prices = Client.getPrices(tickers=_tickers, from_ = start_dt, to_ = end_dt, 
+    prices, _errors = Client.getPrices(tickers=_tickers, from_ = start_dt, to_ = end_dt, 
                            timespan=freq, _parallel = True, 
                            include_splits=include_splits,override=override, logDir=None)
     # res = Client.getOutstandingTs(_tickers, start_dt, end_dt, savDir, True, False)
-    splits = Client.getSplitTs(_tickers, None, False, False)
+    if include_splits:
+        splits = Client.getSplitTs(_tickers, None, False, False)
+        res = adjust_histo_to_splits(prices, splits)
 
-    res = adjust_histo_to_splits(prices, splits)
+    Client._saveErrors(savDir, _errors, start_dt)
     ## loading [avoid multithreading due to data parsing limit
     for ticker in _tickers:
-        if False and os.path.exists(os.path.join(savDir, ticker)):
+        if override and os.path.exists(os.path.join(savDir, ticker)):
             continue
         if ticker not in res:
             continue
@@ -412,7 +431,7 @@ def main():
                              ticker, "{0}_{1}_{2}_{3}".format(ticker,
                                         start_dt.replace("-",""),
                                         end_dt.replace("-",""),
-                                        "SplitAdjusted"),
+                                        "SplitAdjusted" if include_splits else ""),
                             savDir)
     #     time.sleep(12) ## limit 5 api calls per minute
 

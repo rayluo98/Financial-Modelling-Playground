@@ -18,7 +18,7 @@ class IndexCrawler(object):
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Apple M3 Pro Mac OS X 14_6_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36"
         }
-        self.url = "https://www.zacks.com/funds/etf/{}/holding"
+        self.url = "/{}/holding"
         self.savDir = DIR
 
     def componentWtScrapper(self, txtResponse: str):
