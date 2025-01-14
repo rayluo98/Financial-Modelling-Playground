@@ -109,25 +109,58 @@ class PolygonAPI(object):
         LE_HISTO = dict() 
         _error = dict()
         result = {}
-
+        startDt_ = dt.datetime.strptime(from_,"%Y-%m-%d")
+        endDt_ = dt.datetime.strptime(to_, "%Y-%m-%d")
          ## inline loadHistory - TODO: make this function abstract factory class
-        def loadHistory(ticker: str, histo: dict, error:dict,
+        def loadHistory(ticker: str, startDate: str, endDate: str, histo: dict, error:dict,
                         lock:RLock=None, override:bool=False, include_splits=True):
             with lock:
                 foundCache = False
+                foundPartial = False
                 if not override and logDir != None:
-                    files = glob.glob(os.path.join(logDir, ticker, "*_histo.csv"))
-                    if len(files) > 0:
-                        foundCache = True
-                        hist = pd.read_csv(files[0])
+                    files = glob.glob(os.path.join(logDir, ticker, "*.csv"))
+                    for _file in files:
+                        file_traits = _file.split("\\")[-1].split("_")
+                        if (len(file_traits) == 5):
+                            ### means we found at least a partial match
+                            startDt = file_traits[1]
+                            endDt = file_traits[2]
+                            freqDt = file_traits[4]
+                            if freqDt == timespan:
+                                foundPartial = True
+                        else:
+                            continue
+                        if (dt.datetime.strptime(startDt,"%Y%m%d") < startDt_ and
+                            dt.datetime.strptime(endDt,"%Y%m%d") > endDt_ and 
+                            foundPartial):
+                            foundCache = True
+                            hist = pd.read_csv(_file)
+                            break
+                        elif ((dt.datetime.strptime(startDt,"%Y%m%d") > startDt_) ^
+                            (dt.datetime.strptime(endDt,"%Y%m%d") < endDt_) and foundPartial):
+                            if (dt.datetime.strptime(startDt,"%Y%m%d") < startDt_):
+                                startDate = startDt
+                            if (dt.datetime.strptime(endDt,"%Y%m%d") > endDt_):
+                                endDate = endDt
+                            old_hist = pd.read_csv(_file)
+                            break
                 # get historical market data
                 if not foundCache:
-                    hist = pd.DataFrame(self.getData(ticker, multiplier, timespan, from_, to_, limit, include_splits, attemptNo=0))
-                if logDir != None and not foundCache and len(hist) > 1:
-                    save_format = "{0}_{1}_{2}".format(ticker,
-                                    from_.replace("-",""),
-                                    to_.replace("-",""))
-                    save_format = "{0}_{1}".format(ticker, "histo")
+                    hist = pd.DataFrame(self.getData(ticker, multiplier, timespan, 
+                                                     from_, to_, limit, include_splits, attemptNo=0))
+                    if foundPartial: ## merge existing data set with new data set
+                        new_dates = hist['timestamp']
+                        old_dates = old_hist['timestamp']
+                        dates_to_insert = list(set(new_dates).difference(set(old_dates)))
+                        hist = pd.concat([old_hist, hist[hist['timestamp'].isin(dates_to_insert)]], ignore_index=True)
+                        hist.sort_values(by='timestamp', inplace=True)
+                        foundCache = False ## to replace old data with new
+                if logDir != None and not foundCache and len(hist) > 1: 
+                    save_format = "{0}_{1}_{2}_{3}".format(ticker,
+                                    startDate.replace("-",""),
+                                    endDate.replace("-",""),
+                                    timespan)
+                    # save_format = "{0}_{1}".format(ticker, "histo")
                     self._saveData(hist, ticker, save_format, logDir, override)
                 if len(hist) > 1:
                     histo[ticker] = hist ## to replace with struct
@@ -137,7 +170,8 @@ class PolygonAPI(object):
 
         if _parallel:
             lock = RLock()
-            func = lambda x: loadHistory(x, LE_HISTO, _error, lock, override, include_splits)
+            func = lambda x: loadHistory(x, from_, to_,
+                                         LE_HISTO, _error, lock, override, include_splits)
             with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
                 #result = executor.map(functools.partial(loadHistory , tickers, LE_HISTO, lock))
                 executor.map(func, tickers)
@@ -385,13 +419,13 @@ def main():
     include_splits=False
 
     # Tickers to Load
-    # _tickers = list(pd.read_csv(os.path.join(root_dir, 'clean_names.csv'))['0'])
-    _ticker_df = pd.read_excel(r'C:\Users\raymo\OneDrive\Desktop\Copy of Russell 1000 Composition.xlsx')
-    _tickers= []
-    for date in _ticker_df:
-        ticker_strip = _ticker_df[date].values
-        _tickers.extend([str(x).split(" ")[0] for x in ticker_strip])
-    _tickers = list(set(_tickers))
+    _tickers = list(pd.read_csv(os.path.join(root_dir, 'clean_names.csv'))['0'])
+    # _ticker_df = pd.read_excel(r'C:\Users\raymo\OneDrive\Desktop\Copy of Russell 1000 Composition.xlsx')
+    # _tickers= []
+    # for date in _ticker_df:
+    #     ticker_strip = _ticker_df[date].values
+    #     _tickers.extend([str(x).split(" ")[0] for x in ticker_strip])
+    # _tickers = list(set(_tickers))
     # _tickers = ['VIXY']
     # f = open(r'C:\Users\raymo\OneDrive\Desktop\russell_1000_companies.json',)
     # _tickers = [x['ticker'] for x in json.load(f)]
@@ -414,7 +448,8 @@ def main():
     files = glob.glob(os.path.join(savDir))
     prices, _errors = Client.getPrices(tickers=_tickers, from_ = start_dt, to_ = end_dt, 
                            timespan=freq, _parallel = True, 
-                           include_splits=include_splits,override=override, logDir=None)
+                           include_splits=include_splits,override=override, logDir=savDir)
+    res = prices
     # res = Client.getOutstandingTs(_tickers, start_dt, end_dt, savDir, True, False)
     if include_splits:
         splits = Client.getSplitTs(_tickers, None, False, False)
