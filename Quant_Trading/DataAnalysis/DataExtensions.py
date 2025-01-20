@@ -3,6 +3,7 @@ import numpy as np
 from logging import Logger
 from statsmodels.tsa.stattools import adfuller
 from statsmodels.graphics import tsaplots 
+from sklearn.preprocessing import MinMaxScaler
 import pandas as pd
 import seaborn as sns
 import statsmodels as sm
@@ -37,6 +38,41 @@ def scatterByDate(names, prices):
     )
     plt.xlabel(prices.columns[0])
     plt.ylabel(prices.columns[1])
+    plt.show()
+
+
+@staticmethod
+def scatterHeat(name1, name2, heat, df):
+    """
+    Create a scatterplot of the two ETF prices, which is
+    coloured by the date of the price to indicate the 
+    changing relationship between the sets of prices    
+    """
+    # Create a yellow-to-red colourmap where yellow indicates
+    # early dates and red indicates later dates
+    plen = len(df[heat])
+    colour_map = plt.cm.get_cmap('jet')    
+    # Create a MinMaxScaler instance
+    scaler = MinMaxScaler()
+
+    # Fit the scaler to the data
+    scaler.fit(df[[heat]])
+
+    # Transform the data
+    colours = scaler.transform(df[[heat]])
+    
+    # Create the scatterplot object
+    scatterplot = plt.scatter(
+        df[name1], df[name2], 
+        s=30, c=colours, cmap=colour_map, 
+        edgecolor='k', alpha=0.8
+    )
+    
+    # Add a colour bar for the date colouring and set the 
+    # corresponding axis tick labels to equal string-formatted dates
+    colourbar = plt.colorbar(scatterplot)
+    plt.xlabel(name1)
+    plt.ylabel(name2)
     plt.show()
 
 @staticmethod

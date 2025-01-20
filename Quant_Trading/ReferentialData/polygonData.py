@@ -411,7 +411,7 @@ def main():
     ## Start date
     start_dt = "2020-01-01"
     ## Frequency
-    freq = "hour"
+    freq = "minute"
     ### root folder
     root_dir = r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\Histo'
     savDir=r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache'#'D:\DB_feed\AggData'
@@ -457,17 +457,17 @@ def main():
 
     Client._saveErrors(savDir, _errors, start_dt)
     ## loading [avoid multithreading due to data parsing limit
-    for ticker in _tickers:
-        if override and os.path.exists(os.path.join(savDir, ticker)):
-            continue
-        if ticker not in res:
-            continue
-        Client._saveData(pd.DataFrame(res[ticker]), 
-                             ticker, "{0}_{1}_{2}_{3}".format(ticker,
-                                        start_dt.replace("-",""),
-                                        end_dt.replace("-",""),
-                                        "SplitAdjusted" if include_splits else ""),
-                            savDir)
+    # for ticker in _tickers:
+    #     if override and os.path.exists(os.path.join(savDir, ticker)):
+    #         continue
+    #     if ticker not in res:
+    #         continue
+    #     Client._saveData(pd.DataFrame(res[ticker]), 
+    #                          ticker, "{0}_{1}_{2}_{3}".format(ticker,
+    #                                     start_dt.replace("-",""),
+    #                                     end_dt.replace("-",""),
+    #                                     "SplitAdjusted" if include_splits else ""),
+    #                         savDir)
     #     time.sleep(12) ## limit 5 api calls per minute
 
     # PolygonAPI._removeEmptyFiles(savDir)
