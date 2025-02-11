@@ -32,29 +32,7 @@ def scrape_product_price():
     response = requests.get(product_url, headers=headers,
                             cookies=cookiesJar)
     
-    # # Parse the HTML response
-    soup = bs(response.content, 'html.parser')
-    
-    # # Extract the product price from the parsed HTML
-    table = soup.find('table', 'table table-hover table-condensed')
-    # The first tr contains the field names.
-    headings = ["Timestamp", "Country", "Flag", "Event",
-                "Actual", "Previous","Consensus", "Forecast"]
-
-    datasets = []
-    for row in table.find_all("tr")[1:]:
-        temp = row.find_all("td")
-        temp = list(filter(lambda x: len(x.text.strip()) > 0, temp))
-        if (len(temp) < len(headings)):
-            continue
-        dataset = dict(zip(headings, (td.get_text().strip() 
-                                      for td in temp)))
-        datasets.append(dataset)
-    # for dataset in datasets:
-    #     for field in dataset:
-    #         print("{0:<16}: {1}".format(field[0], field[1]))
-    price = pd.DataFrame(datasets)
-    # Create a scraping event message
+       # Create a scraping event message
     scraping_event = {
         'timestamp': int(time.time()),
         'product_url': product_url,
