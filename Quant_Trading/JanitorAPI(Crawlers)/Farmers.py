@@ -5,6 +5,9 @@ import time
 import re
 import mechanize
 import pandas as pd
+import CrawlerFactory
+import EarningsCalendarCrawler
+import json
 
 # Kafka configuration
 bootstrap_servers = ['localhost:9092']
@@ -22,7 +25,7 @@ headers = {'user-agent': 'Mozilla/5.0 (WIndows NT 10.0; Win64; x64; rv:87.0) Gec
 # Create Kafka producer
 producer = kp(bootstrap_servers=bootstrap_servers,
             api_version=(0,11,5),
-            value_serializer=lambda x: dumps(x).encode('utf-8'))
+            value_serializer=lambda x: json.dumps(x).encode('utf-8'))
 
 def scrape_product_price():
     # Make HTTP request to fetch the product page
@@ -32,11 +35,36 @@ def scrape_product_price():
     response = requests.get(product_url, headers=headers,
                             cookies=cookiesJar)
     
+    def earningsEventScrapper(Response):
+        ### Manual Table Headers
+        headers = ["Company", "EPS", "Consensus",
+                    "Previous", "Revenue_Nominal","Consensus_Nominal", "Previous_Nominal"]
+        # Parse the HTML response
+        soup = bs(Response, 'html.parser')
+        # Extract Regex Identifiers
+        tableExtract = soup.find('table', 'table table-hover table-condensed table-stripped')
+        # The first tr contains the field names.
+        datasets = []
+        if tableExtract == None:
+            return pd.DataFrame()
+        for row in tableExtract.find_all("tr")[1:]:
+            temp = row.find_all("td")
+            temp = list(filter(lambda x: len(x.text.strip()) > 0, temp))
+            if (len(temp) < len(headers)):
+                continue
+            dataset = {"Country":row.get("data-country")} | \
+                    {"Ticker":row.get("data-symbol")} | \
+                    dict(zip(headers, (td.get_text().strip() 
+                                        for td in temp)))
+            datasets.append(dataset)
+        res = pd.DataFrame(datasets)
+        return res
+
        # Create a scraping event message
     scraping_event = {
         'timestamp': int(time.time()),
         'product_url': product_url,
-        'price': price
+        'price': earningsEventScrapper(response.content).to_json()
     }
     
     # Publish the scraping event to Kafka topic

@@ -78,7 +78,7 @@ class EarningsCalendarCrawler(object):
             req.headers.update(headers)
             for key in self.dates:
                 ## don't api to get killed for botting 
-                rnd_wait = random.uniform(5,10)
+                rnd_wait = random.uniform(10,20)
                 time.sleep(rnd_wait)
                 self.updateCrawlDate(key)
                 if self.cookiesJar == None:
@@ -121,7 +121,7 @@ def main():
     # end_dt = date(2025,1,1)
     end_dt = pd.to_datetime("2025-02-10")
     ## Start date
-    start_dt = pd.to_datetime("2015-04-29")
+    start_dt = pd.to_datetime("2024-08-18")
     dt_list = get_all_days_between_dates(start_dt, end_dt)
     janitorTres = EarningsCalendarCrawler(dt_list)
     print(janitorTres.scrape())
