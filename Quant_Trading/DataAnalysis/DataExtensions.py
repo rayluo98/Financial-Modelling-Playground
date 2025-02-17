@@ -9,9 +9,12 @@ import seaborn as sns
 import statsmodels as sm
 from hurst import compute_Hc
 import time
+import os
+
+FIG_SAV_DIR = r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\EDA'
 
 @staticmethod
-def scatterByDate(names, prices):
+def scatterByDate(names, prices, saveFig=False, saveName = ""):
     """
     Create a scatterplot of the two ETF prices, which is
     coloured by the date of the price to indicate the 
@@ -38,11 +41,16 @@ def scatterByDate(names, prices):
     )
     plt.xlabel(prices.columns[0])
     plt.ylabel(prices.columns[1])
-    plt.show()
+
+    if saveFig:
+        plt.savefig(os.path.join(FIG_SAV_DIR, saveName + ".png"))
+        plt.close()
+    else:
+        plt.show()
 
 
 @staticmethod
-def scatterHeat(name1, name2, heat, df):
+def scatterHeat(name1, name2, heat, df,saveFig=False, saveName = ""):
     """
     Create a scatterplot of the two ETF prices, which is
     coloured by the date of the price to indicate the 
@@ -73,7 +81,11 @@ def scatterHeat(name1, name2, heat, df):
     colourbar = plt.colorbar(scatterplot)
     plt.xlabel(name1)
     plt.ylabel(name2)
-    plt.show()
+    if saveFig:
+        plt.savefig(os.path.join(FIG_SAV_DIR, saveName + ".png"))
+        plt.close()
+    else:
+        plt.show()
 
 @staticmethod
 def adfTest(self):
