@@ -101,18 +101,24 @@ def main():
     def EODvEOW(test, name):
         test['DtBucket'] = test.apply(lambda dr: int(WeekdayDeltaMask(dr['TimeDelta'])) + 2*int(WeekendDeltaMask(dr['TimeDelta'])), axis=1)
         # test = test[test['TimeDelta'] > 1]
-        scatterHeat('DtBucket', 'close', 'timestamp', test, True, name + "EODvEOW")
+        scatterHeat('DtBucket', 'close', 'timestamp', test, True, name + "_close_EODvEOW")
+        scatterHeat('DtBucket', 'vwap', 'timestamp', test, True, name + "_vwap_EODvEOW")
+        scatterHeat('DtBucket', 'volume', 'timestamp', test, True, name + "_volume_EODvEOW")
 
     def WEEKDAY_EOD(test, name):
         test['WeekdayBucket'] = [pd.to_datetime(date, unit='ms').weekday() for date in test['timestamp']]
-        scatterHeat('WeekdayBucket', 'close', 'timestamp', test, True, name)
+        scatterHeat('WeekdayBucket', 'close', 'timestamp', test, True, name + "_close_EOD")
+        scatterHeat('WeekdayBucket', 'close', 'timestamp', test, True, name + "_vwap_EOD")
+        scatterHeat('WeekdayBucket', 'close', 'timestamp', test, True, name + "_volume_EOD")
 
     def INTRADAY_ANALYSIS(test, name):
         ### intraday filter
         intra_test = test[test['TimeDelta'] <= 60]
         intra_test['WeekdayBucket'] = [pd.to_datetime(date, unit='ms').weekday() for date in intra_test['timestamp']]
         # plt.scatter(intra_test['WeekdayBucket'], intra_test['close'])
-        scatterHeat('WeekdayBucket', 'close', 'timestamp', intra_test, True, name)
+        scatterHeat('WeekdayBucket', 'close', 'timestamp', intra_test, True, name + "_close_intra")
+        scatterHeat('WeekdayBucket', 'close', 'timestamp', intra_test, True, name + "_vwap_intra")
+        scatterHeat('WeekdayBucket', 'close', 'timestamp', intra_test, True, name + "_volume_intra")
 
         weekday_vol_summary = {}
         for i in range(0,6):
@@ -129,7 +135,9 @@ def main():
         inter_test = test[test['TimeDelta'] > 60]
         inter_test['WeekdayBucket'] = [pd.to_datetime(date, unit='ms').weekday() for date in inter_test['timestamp']]
         # plt.scatter(intra_test['WeekdayBucket'], intra_test['close'])
-        scatterHeat('WeekdayBucket', 'close', 'timestamp', inter_test, True, name)
+        scatterHeat('WeekdayBucket', 'close', 'timestamp', inter_test, True, name + "_close_inter")
+        scatterHeat('WeekdayBucket', 'close', 'timestamp', inter_test, True, name + "_vwap_inter")
+        scatterHeat('WeekdayBucket', 'close', 'timestamp', inter_test, True, name + "_volume_inter")
         weekday_vol_summary = {}
         for i in range(0,6):
             weekday_df = inter_test[inter_test['WeekdayBucket']==i]
@@ -155,8 +163,8 @@ def main():
         except:
             print(f"Error loading {ticker}")
         
-    intraday_summary.to_csv(r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\EDA\INTRADAY_SUMMARY.csv', header=False)
-    interday_summary.to_csv(r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\EDA\INTERDAY_SUMMARY.csv', header=False)
+    intraday_summary.to_csv(r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\EDA\INTRADAY_SUMMARY.csv')
+    interday_summary.to_csv(r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\EDA\INTERDAY_SUMMARY.csv')
 
 
 if __name__ == "__main__":
