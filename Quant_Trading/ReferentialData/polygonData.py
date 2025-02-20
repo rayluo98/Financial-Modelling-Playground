@@ -121,17 +121,17 @@ class PolygonAPI(object):
                     files = glob.glob(os.path.join(logDir, ticker, "*.csv"))
                     for _file in files:
                         file_traits = _file.split("\\")[-1].split("_")
-                        if (len(file_traits) == 5):
+                        if (len(file_traits) == 4):
                             ### means we found at least a partial match
                             startDt = file_traits[1]
                             endDt = file_traits[2]
-                            freqDt = file_traits[4]
+                            freqDt = file_traits[3].replace(".csv","")
                             if freqDt == timespan:
                                 foundPartial = True
                         else:
                             continue
-                        if (dt.datetime.strptime(startDt,"%Y%m%d") < startDt_ and
-                            dt.datetime.strptime(endDt,"%Y%m%d") > endDt_ and 
+                        if (dt.datetime.strptime(startDt,"%Y%m%d") <= startDt_ and
+                            dt.datetime.strptime(endDt,"%Y%m%d") >= endDt_ and 
                             foundPartial):
                             foundCache = True
                             hist = pd.read_csv(_file)
