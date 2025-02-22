@@ -33,11 +33,8 @@ class mariaDB(sqlConnection):
         super().create_database(DB_NAME)
 
     ### DEPRECATED
-    def _HistoToTable(self, data:dict):
-        super()._HistoToTable(data)
-
-    def _DfHistoToTable(self, data:dict):
-        super()._DfHistoToTable(data)
+    def _HistoToTable(self, data:dict, attr:str):
+        super()._HistoToTable(data, attr)
         
 def main():
     test = mariaDB("LE_HISTO")
@@ -45,7 +42,7 @@ def main():
     import pickle
     import os
     ## End Date
-    end_dt = "2025-02-10"
+    end_dt = "2025-02-20"
     ## Start date
     start_dt = "2020-01-20"
     # Loading "pairs trade" buckets
@@ -57,7 +54,6 @@ def main():
     UNIVERSE=[]
     for i in list(BUCKETS.values()):
         UNIVERSE.extend(i)
-        break ### <--- for testing
 
     colnames = ["Close", "Volume"]
     DataLoader = PolygonAPI()
@@ -71,15 +67,18 @@ def main():
     if len(mid_df) == 0:
         mid_df, _ = DataLoader.getPrices(UNIVERSE, timespan= "day", from_ = start_dt, 
                                         to_=end_dt,
-                                    logDir=os.path.join(DIR,"Beta_Callibration"), _parallel=True)
+                                    logDir=DIR, _parallel=True)
         MID_LOADED = True
 
-    # ### loading in high frequency data
-    # if len(high_df) == 0:
-    #     high_df, _ = DataLoader.getPrices(UNIVERSE,from_ = start_dt, 
-    #                                     to_=end_dt, timespan="minute", logDir=DIR, _parallel=True)
-    #     HIGH_LOADED = True
-    test._DfHistoToTable(mid_df)
+    ### loading in high frequency data
+    if len(high_df) == 0:
+        high_df, _ = DataLoader.getPrices(UNIVERSE,from_ = start_dt, 
+                    
+                    
+                                        to_=end_dt, timespan="minute", logDir=DIR, _parallel=True)
+        HIGH_LOADED = True
+    test._DfHistoToTable(mid_df, attr = "day")
+    test._DfHistoToTable(high_df, attr = "minute")
 
 if __name__=="__main__":
     logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s: %(message)s',

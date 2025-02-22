@@ -11,8 +11,10 @@ class sqlConnection(object):
         self.database_username = 'root'
         self.database_password = 'alohomora'
         self.database_ip       = 'localhost'
+        # self.database_ip       = '192.168.0.190'
         self.DBNAME     = DBNAME
         self.connector = connector
+        self.domain_socket = r'/var/run/mariadb10.sock'
         try:
             self.mydb = connector.connect(
                 host = self.database_ip,
@@ -80,8 +82,8 @@ class sqlConnection(object):
             logging.info("Contributed to HISTO:{0}".format(ticker))
         return None
     
-    def _DfHistoToTable(self, data:dict):
-        self.create_database("LE_HISTO")
+    def _DfHistoToTable(self, data:dict, attr:str):
+        self.create_database(f"LE_HISTO_{attr}")
         with self.engine.connect() as conn:
             for ticker in data:
                 data[ticker].to_sql(con=conn, name=ticker, if_exists='replace')
