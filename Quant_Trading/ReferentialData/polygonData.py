@@ -119,6 +119,7 @@ class PolygonAPI(object):
                 foundPartial = False
                 if not override and logDir != None:
                     files = glob.glob(os.path.join(logDir, ticker, "*.csv"))
+                    files.sort(reverse=True)
                     for _file in files:
                         file_traits = _file.split("\\")[-1].split("_")
                         if (len(file_traits) == 4):

@@ -83,11 +83,11 @@ class sqlConnection(object):
         return None
     
     def _DfHistoToTable(self, data:dict, attr:str):
-        self.create_database(f"LE_HISTO_{attr}")
+        self.create_database(f"LE_HISTO")
         with self.engine.connect() as conn:
             for ticker in data:
-                data[ticker].to_sql(con=conn, name=ticker, if_exists='replace')
-                logging.info("Contributed to HISTO:{0}".format(ticker))
+                data[ticker].to_sql(con=conn, name=f"{ticker}_{attr}", if_exists='replace')
+                logging.info(f"Contributed to LE_HISTO:{ticker}/{attr}")
         return None
         
 def main():
