@@ -1,7 +1,7 @@
 # Module Imports
 import mariadb
 import sys
-from sqlConnection import sqlConnection
+from POC_stash.sqlConnection import sqlConnection
 import logging 
 
 class mariaDB(sqlConnection):
