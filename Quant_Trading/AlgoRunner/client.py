@@ -9,8 +9,8 @@ import datetime
 import requests
 import threading
 import urllib.parse
-from .stream import Stream
-from .tokens import Tokens
+from stream import Stream
+from tokens import Tokens
 
 
 class Client:

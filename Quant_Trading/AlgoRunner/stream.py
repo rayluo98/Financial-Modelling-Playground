@@ -278,7 +278,7 @@ class Stream:
         Create a basic request (all requests follow this format)
 
         Args:
-            service (str): service to use
+         op   service (str): service to use
             command (str): command to use ("SUBS"|"ADD"|"UNSUBS"|"VIEW"|"LOGIN"|"LOGOUT")
             parameters (dict, optional): parameters to use. Defaults to None.
 
