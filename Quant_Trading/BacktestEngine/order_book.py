@@ -1,5 +1,6 @@
 import pandas as pd
 from dataclasses import dataclass, asdict
+import logging 
 
 @dataclass
 class Page:
@@ -117,15 +118,45 @@ class Book:
             new_cost = cost
             new_qty = qty
         else:
-            new_mv = (lastBook.iloc[0].at['Quantity'] + qty)*price
-            new_cost = lastBook.iloc[0].at['CostBasis'] + cost
-            new_qty = lastBook.iloc[0].at['Quantity'] + qty
-            new_cash = lastBook.iloc[0].at['Cash'] - (tca + cost)
+            new_mv = (lastBook.iloc[-1].at['Quantity'] + qty)*price
+            new_cost = lastBook.iloc[-1].at['CostBasis'] + cost
+            new_qty = lastBook.iloc[-1].at['Quantity'] + qty
+            new_cash = lastBook.iloc[-1].at['Cash'] - (tca + cost)
         cls.orders.append(order)      
         cls.books.append(Page(date,  ticker, new_qty, new_mv, new_mv, new_cash, new_mv - new_cost))
         cls.history.append({"Date":date,"Ticker":ticker,"Quantity": new_qty,
                             "CostBasis": new_cost, "Value":new_mv, "PnL": new_mv - new_cost, "Cash": new_cash})
         
+    ### unwinds a specific position
+    def unwind(cls, date:pd.Timestamp, ticker: str, price: float, tca: float = 0)->None:
+        lastBook = cls.getTickerBook([ticker])
+        if (lastBook.shape[0] !=0): 
+            qty = -1*lastBook.iloc[-1].at['Quantity']
+            order = Trade(date, ticker, price, qty)
+            cost = price*qty
+            ## update cash according to order
+            new_cash  = -1*(tca+cost)
+            new_cost = 0
+            new_qty = lastBook.iloc[-1].at['Quantity'] + qty ### this should equal 0
+            new_cash = lastBook.iloc[-1].at['Cash'] - (tca + cost)
+            cls.orders.append(order)      
+            cls.books.append(Page(date,  ticker, new_qty, 0, 0, new_cash, 0))
+            cls.history.append({"Date":date,"Ticker":ticker,"Quantity": new_qty,
+                                "CostBasis": new_cost, "Value":0, "PnL": 0, "Cash": new_cash})
+        ## otherwise nothing to unwind 
+
+    ### unwinds all positions
+    def unwindALL(cls, date:pd.Timestamp, prices: dict, tca: float = 0)->None:
+        book = cls.get_books()
+        if (book.shape[0] ==0): 
+            ### NOTHING TO UNWIND
+            print("NOTHING TO UNWIND")
+        else:
+            ### this is low efficiency. need to improve
+            allTickers = set(book[book.Date <= date].Ticker)
+            for tick in allTickers:
+                cls.unwind(date, tick, prices[tick], tca)
+
     # we repopulate pnl using price history of stocks
     def backfillPnL(cls, price_history: pd.DataFrame)->None:
         # might need rename here
