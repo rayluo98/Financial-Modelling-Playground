@@ -408,16 +408,16 @@ def main():
     Client = PolygonAPI()
     ## Load names to load 
     ## End Date
-    end_dt = "2025-01-01"
+    end_dt = "2025-02-20"
     ## Start date
-    start_dt = "2020-01-01"
+    start_dt = "2020-02-28"
     ## Frequency
     freq = "minute"
     ### root folder
     root_dir = r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\Histo'
     savDir=r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache'#'D:\DB_feed\AggData'
-    override=False
-    include_splits=False
+    override=True
+    include_splits=True
 
     # Tickers to Load
     _tickers = list(pd.read_csv(os.path.join(root_dir, 'clean_names.csv'))['0'])
@@ -479,9 +479,9 @@ def test():
     Client = PolygonAPI()
     ## Load names to load 
     ## End Date
-    end_dt = "2025-01-01"
+    end_dt = "2025-02-25"
     ## Start date
-    start_dt = "2020-01-01"
+    start_dt = "2020-02-28"
     ### root folder
     root_dir = r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\Histo'
     savDir=r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache'#'D:\DB_feed\AggData'

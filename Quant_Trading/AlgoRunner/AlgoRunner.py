@@ -9,7 +9,7 @@ import datetime
 import json
 import time
 from time import sleep
-from AlgoRunner.OrderHandler import *
+from OrderHandler import *
 import os
 
 def main():
