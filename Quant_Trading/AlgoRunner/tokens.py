@@ -310,8 +310,8 @@ class Tokens:
         httpd = http.server.HTTPServer((url_base, url_port), HTTPHandler)
         #httpd.socket.settimeout(1)
 
-        cert_filepath = os.path.expanduser("~/.schwabdev/localhost.crt")
-        key_filepath = os.path.expanduser("~/.schwabdev/localhost.key")
+        cert_filepath = os.path.expanduser("~/localhost.crt")
+        key_filepath = os.path.expanduser("~/localhost.key")
         if not (os.path.isfile(cert_filepath) and os.path.isfile(key_filepath)):  # this does not check validity
             self._generate_certificate(common_name=url_base, cert_filepath=cert_filepath, key_filepath=key_filepath)
 

@@ -1,4 +1,3 @@
-#%%
 from scapy.all import *
 from scapy.utils import RawPcapReader
 from scapy.layers.l2 import Ether
@@ -6,18 +5,17 @@ from scapy.layers.inet import TCP,IP
 import argparse
 import os
 import sys
-try:
-    packets = rdpcap(r"C:\Users\raymo\OneDrive\Desktop\20250106_1_021.pcap")
-except FileNotFoundError:
-    print("Error: pcap file not found.")
-except Exception as e:
-        print(f"An error occurred: {e}")
-packets
+# try:
+#     packets = rdpcap(r"C:\Users\raymo\OneDrive\Desktop\20250205_2_057.pcap\20250205_2_057.pcap")
+# except FileNotFoundError:
+#     print("Error: pcap file not found.")
+# except Exception as e:
+#         print(f"An error occurred: {e}")
+# packets
 
-# %%
-pcap_file = r'C:\Users\raymo\OneDrive\Desktop\20250106_1_021.pcap'
-output_file = r'C:\Users\raymo\OneDrive\Desktop\20250106_1_021.txt'
-output_file_2 = r'C:\Users\raymo\OneDrive\Desktop\20250106_1_021_2.txt'
+pcap_file = r'C:\Users\raymo\OneDrive\Desktop\20250205_2_057.pcap\20250205_2_057.pcap'
+output_file = r'C:\Users\raymo\OneDrive\Desktop\20250205_2_057.txt'
+output_file_2 = r'C:\Users\raymo\OneDrive\Desktop\20250205_2_057.txt'
 import time
 
 def printable_timestamp(ts, resol):
@@ -27,19 +25,79 @@ def printable_timestamp(ts, resol):
     return '{}.{}'.format(ts_sec_str, ts_subsec)
 
 #---
-#%%
+
+
+
+TAG_LENGTH = {
+    'A':26,
+    'T':5,
+    'O':18,
+    'K':46,
+    'E':20,
+    'C':29,
+    'D':11,
+    'R':2,
+    'L':3,
+    '||':125,
+    'BP':68,
+    'MG':16
+}
+
+TAG_CONVERSION ={
+    'T':"L",
+    'O':"LB2sBBq",
+    'L':'BB',
+    'K':'LcL2xL2xQLQQ',
+    'A':'LLcL2xQBB',
+    'E':'LLcL2xL',
+    'C':'LLcL2xLQB',
+    'D':'LLcB',
+    'R':'B',
+    '||':'',
+    'BP':'',
+    'MG':''
+}
+import struct
+
+def decode_big_endian(data, format_string):
+  """
+  Decodes big-endian data using a specified format string.
+
+  Args:
+    data: The byte string to decode.
+    format_string: The format string specifying the data structure.
+
+  Returns:
+    A tuple containing the decoded values.
+  """
+  return struct.unpack(">" + format_string, data)
+
+# Example usage:
+data = b"\x00\x01\x00\x02"  # Example big-endian data (two 16-bit integers)
+format_string = "hh"  # Two short integers
+decoded_data = decode_big_endian(data, format_string)
+print(decoded_data)  # Output: (1, 2)
+
+data2 = b'\x41\x42\x43\x44' # Example big-endian data (string)
+format_string2 = "4s" # a string of 4 characters
+decoded_data2 = decode_big_endian(data2,format_string2)
+print(decoded_data2) # Output: (b'ABCD',)
 
 def jpExchangeDecoder(line: str):
-    payloadExtract = line.split('t')[1:]
+    payloadExtract = line#.split('t')[1:]
     # payloadExtract = line[26:]
     end = len(payloadExtract)
     start = 0
     res = []
     while start < end:
-        print(payloadExtract[start:start+1])
-        print(payloadExtract[start:start+1].decode('ascii'))
-        buffer_length = int(payloadExtract[start:start+1].decode('ascii'), 2)
-        res.append(payloadExtract[start+1:start+1+buffer_length].decode('ascii'))
+        tag = payloadExtract[start:start+1].decode('ascii')
+        buffer_length = TAG_LENGTH[tag]
+        # print(payloadExtract[start:start+1].decode('utf-8'))
+        if tag in TAG_CONVERSION:
+            res.append(decode_big_endian(payloadExtract[start+1:start+buffer_length], 
+                                         TAG_CONVERSION[tag]))
+        else:
+            print('what do...')
         start += (1+buffer_length)
     return res
 import base64
@@ -67,8 +125,6 @@ def test_pcap(in_file, out_file):
     # f.writelines(line_list)
     f.close()
 
-test_pcap(pcap_file, output_file)
-#%%
 def process_pcap(in_file, out_file):
     f = open(out_file, "w+")
     count = 0
@@ -92,9 +148,11 @@ def process_pcap(in_file, out_file):
         # pkt_size = pkt_metadata.caplen # Get packet size
         count += 1
         # line = src + " " + dst + " " + str(round(relative_timestamp, 6)) + " " + str(pkt_size) + " " + str(ip_pkt.proto) + " " + str(ip_pkt.sport) + " " + str(ip_pkt.dport) + "\n"
-        line = ether_pkt[Raw].load
+        line = ether_pkt[Raw].load[27:]
+        # if count > 50:
+        #     print(jpExchangeDecoder(line))
         # print(line.decode("ascii"))
-        line_list.append(line.decode("utf-8") + '\n')
+        line_list.append(jpExchangeDecoder(line))
         # if count > 100:
         #     break
     
@@ -102,8 +160,6 @@ def process_pcap(in_file, out_file):
     f.close()
 
 # process_pcap(pcap_file, output_file_2)
-# %%
-
 
 if __name__ == '__main__':
     # parser = argparse.ArgumentParser(description='PCAP reader')
@@ -117,5 +173,5 @@ if __name__ == '__main__':
         print('"{}" does not exist'.format(file_name), file=sys.stderr)
         sys.exit(-1)
 
-    test_pcap(pcap_file, output_file)
+    process_pcap(pcap_file, output_file)
     sys.exit(0)

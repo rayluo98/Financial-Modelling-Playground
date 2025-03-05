@@ -18,13 +18,13 @@ def main():
     with timer.timer() as t:
         MARKET_DATA_ENDPOINT = r"marketdata/v1/"
         ACCOUNT_ENDPOINT = r"trader/v1"
-        TIME_STOPPER = 9.5 * 3600 ## imprecise
+        TIME_STOPPER = int(9.5 * 3600) ## imprecise
         
         ### establish schwab connection
         client = Client(os.getenv('app_key'), os.getenv('app_secret'), os.getenv('callback_url'))
 
         ### retrieve account info 
-        _, account_hash = OrderHandler(client).getAccs()
+        _, account_hash = OrderHandler().getAccs(client)
 
         # define a variable for the steamer:
         streamer = client.stream

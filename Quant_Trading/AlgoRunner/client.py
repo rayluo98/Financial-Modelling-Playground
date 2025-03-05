@@ -15,7 +15,7 @@ from tokens import Tokens
 
 class Client:
 
-    def __init__(self, app_key, app_secret, callback_url="https://localhost:3000", tokens_file="tokens.json", timeout=10, capture_callback=False, use_session=True, call_on_notify=None):
+    def __init__(self, app_key, app_secret, callback_url="https://127.0.0.1:3000", tokens_file="tokens.json", timeout=10, capture_callback=True, use_session=True, call_on_notify=None):
         """
         Initialize a client to access the Schwab API.
 

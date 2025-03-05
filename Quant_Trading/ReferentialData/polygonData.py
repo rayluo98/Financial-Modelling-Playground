@@ -481,7 +481,7 @@ def test():
     ## End Date
     end_dt = "2025-02-25"
     ## Start date
-    start_dt = "2020-02-28"
+    start_dt = "2020-03-01"
     ### root folder
     root_dir = r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\Histo'
     savDir=r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache'#'D:\DB_feed\AggData'
