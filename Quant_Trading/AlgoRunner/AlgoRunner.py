@@ -18,7 +18,7 @@ def main():
     with timer.timer() as t:
         MARKET_DATA_ENDPOINT = r"marketdata/v1/"
         ACCOUNT_ENDPOINT = r"trader/v1"
-        TIME_STOPPER = int(9.5 * 3600) ## imprecise
+        TIME_STOPPER = int(9.5 * 3600 * 1000) ## imprecise
         
         ### establish schwab connection
         client = Client(os.getenv('app_key'), os.getenv('app_secret'), os.getenv('callback_url'))
@@ -70,7 +70,7 @@ def main():
                             for content in contents:
                                 symbol = content.pop("key", "NO KEY")
                                 fields = content
-                                print(f"[{service_type} - {symbol}]({datetime.fromtimestamp(service_timestamp//1000)}): {fields}")
+                                print(f"[{service_type} - {symbol}]({datetime.datetime.fromtimestamp(service_timestamp//1000)}): {fields}")
                     elif rtype == "response":
                         pass # this is a "login success" or "subscription success" or etc
                     elif rtype == "notify":
@@ -78,7 +78,7 @@ def main():
                     else:
                         #unidentified response type
                         print(oldest_response)
-            time.sleep(0.5) # slow down difference checking
+            time.sleep(1) # slow down difference checking
 
             ### pull account data
 
