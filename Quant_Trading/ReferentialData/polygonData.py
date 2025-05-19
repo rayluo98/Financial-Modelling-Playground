@@ -95,8 +95,8 @@ class PolygonAPI(object):
     def getPrices(self, 
                 tickers: list, multiplier:int = 1, 
                 timespan:str="minute", 
-                from_="2023-01-01", 
-                to_="2023-06-13", 
+                from_="2015-05-18", 
+                to_="2025-05-18", 
                 include_splits=True,
                 limit=50000,
                 logDir:str|None = None, # r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_ErrorLogs',
@@ -149,6 +149,8 @@ class PolygonAPI(object):
                 if not foundCache:
                     hist = pd.DataFrame(self.getData(ticker, multiplier, timespan, 
                                                      from_, to_, limit, include_splits, attemptNo=0))
+                    ### create unique ids for data entries
+                    hist['ID'] = ticker + "_" + hist['timestamp'].astype(str) + "_" + timespan
                     if foundPartial: ## merge existing data set with new data set
                         new_dates = hist['timestamp']
                         old_dates = old_hist['timestamp']
@@ -408,31 +410,19 @@ def main():
     Client = PolygonAPI()
     ## Load names to load 
     ## End Date
-    end_dt = "2025-02-20"
+    end_dt = "2025-05-15"
     ## Start date
-    start_dt = "2020-02-28"
+    start_dt = "2015-05-15"
     ## Frequency
     freq = "minute"
     ### root folder
     root_dir = r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\Histo'
-    savDir=r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache'#'D:\DB_feed\AggData'
+    savDir=r'D:\_Cache'#'D:\DB_feed\AggData'
     override=True
     include_splits=True
 
     # Tickers to Load
     _tickers = list(pd.read_csv(os.path.join(root_dir, 'clean_names.csv'))['0'])
-    # _ticker_df = pd.read_excel(r'C:\Users\raymo\OneDrive\Desktop\Copy of Russell 1000 Composition.xlsx')
-    # _tickers= []
-    # for date in _ticker_df:
-    #     ticker_strip = _ticker_df[date].values
-    #     _tickers.extend([str(x).split(" ")[0] for x in ticker_strip])
-    # _tickers = list(set(_tickers))
-    # _tickers = ['VIXY']
-    # f = open(r'C:\Users\raymo\OneDrive\Desktop\russell_1000_companies.json',)
-    # _tickers = [x['ticker'] for x in json.load(f)]
-    # f.close()
-    # df = pd.read_csv(os.path.join(root_dir, 'tickers.csv'))
-    # _tickers = list(df[df.columns[0]])
 
     # truncate ticker 
     startFrom = ""
@@ -452,24 +442,25 @@ def main():
                            include_splits=include_splits,override=override, logDir=savDir)
     res = prices
     # res = Client.getOutstandingTs(_tickers, start_dt, end_dt, savDir, True, False)
-    if include_splits:
-        splits = Client.getSplitTs(_tickers, None, False, False)
-        res = adjust_histo_to_splits(prices, splits)
+    # if include_splits:
+    #     splits = Client.getSplitTs(_tickers, None, False, False)
+    #     res = adjust_histo_to_splits(prices, splits)
 
     Client._saveErrors(savDir, _errors, start_dt)
-    ## loading [avoid multithreading due to data parsing limit
-    # for ticker in _tickers:
-    #     if override and os.path.exists(os.path.join(savDir, ticker)):
-    #         continue
-    #     if ticker not in res:
-    #         continue
-    #     Client._saveData(pd.DataFrame(res[ticker]), 
-    #                          ticker, "{0}_{1}_{2}_{3}".format(ticker,
-    #                                     start_dt.replace("-",""),
-    #                                     end_dt.replace("-",""),
-    #                                     "SplitAdjusted" if include_splits else ""),
-    #                         savDir)
-    #     time.sleep(12) ## limit 5 api calls per minute
+    # loading [avoid multithreading due to data parsing limit
+    for ticker in _tickers:
+        if override and os.path.exists(os.path.join(savDir, ticker)):
+            continue
+        if ticker not in res:
+            continue
+        Client._saveData(pd.DataFrame(res[ticker]), 
+                             ticker, "{0}_{1}_{2}_{3}".format(ticker,
+                                        start_dt.replace("-",""),
+                                        end_dt.replace("-",""),
+                                        "SplitAdjusted" if include_splits else ""),
+                            savDir,
+                            override=override)
+        # time.sleep(12) ## limit 5 api calls per minute
 
     # PolygonAPI._removeEmptyFiles(savDir)
 
@@ -483,8 +474,8 @@ def test():
     ## Start date
     start_dt = "2020-03-01"
     ### root folder
-    root_dir = r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\Histo'
-    savDir=r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache'#'D:\DB_feed\AggData'
+    root_dir = r'D:\Histo'
+    savDir=r'D:\_Cache'#'D:\DB_feed\AggData'
     override=False
     ticker = "AGG"
     temp = Client.getStatic(ticker,
@@ -493,15 +484,15 @@ def test():
     
 ### file renaming script
 def rename():
-    root_dir = r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\Histo'
-    savDir=r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_Cache'#'D:\DB_feed\AggData'
+    root_dir = r'D:\Histo'
+    savDir=r'D:\_Cache'#'D:\DB_feed\AggData'    
     _tickers = list(pd.read_csv(os.path.join(root_dir, 'clean_names.csv'))['0'])
     for ticker in _tickers:
         if not os.path.exists(os.path.join(savDir, ticker)):
             continue
         new_name = "{0}_histo.csv".format(ticker)
-        end_dt = "2024-12-10"
-        start_dt = "2019-12-10"
+        end_dt = "2025-05-15"
+        start_dt = "2015-05-15"
         old_name = "{0}_{1}_{2}_{3}".format(ticker,
                                             start_dt.replace("-",""),
                                             end_dt.replace("-",""),

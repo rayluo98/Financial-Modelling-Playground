@@ -167,7 +167,7 @@ class Book:
         orderBook.sort_values("Date", ascending=True, inplace=True)
         price_history.sort_values("Date", ascending=True, inplace=True)
         correctedOrders = pd.merge_asof(price_history, orderBook, on="Date", by=["Ticker"])
-        correctedOrders["Value"] = correctedOrders.apply(lambda dr: dr["Price"] * dr["Quantity"], axis=1)
+        correctedOrders["Value"] = correctedOrders["Price"] * correctedOrders["Quantity"]
         correctedOrders["UnrealizedPnL"] = correctedOrders["Value"] - correctedOrders["CostBasis"]
         correctedOrders.to_csv(r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\debug.csv')
         correctedOrders =correctedOrders.filter(["Date", "Ticker", "CostBasis", "Value", "UnrealizedPnL", "Cash"])
@@ -176,5 +176,10 @@ class Book:
                                                            PnL = ("UnrealizedPnL", "sum"),
                                                            Cash = ("Cash","sum"))
         cls.history["PnL"] += cls.history["Cash"]
+
+    ## aggregate ticker level pnl from book
+    def getPnL(cls)->pd.DataFrame:
+        pnl = pd.DataFrame()
+        pnl = cls.history.groupby("Date")
     
         

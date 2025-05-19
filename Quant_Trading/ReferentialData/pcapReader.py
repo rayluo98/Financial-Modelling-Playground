@@ -5,6 +5,8 @@ from scapy.layers.inet import TCP,IP
 import argparse
 import os
 import sys
+import numba as nb
+from numba import njit
 # try:
 #     packets = rdpcap(r"C:\Users\raymo\OneDrive\Desktop\20250205_2_057.pcap\20250205_2_057.pcap")
 # except FileNotFoundError:
@@ -72,27 +74,16 @@ def decode_big_endian(data, format_string):
   """
   return struct.unpack(">" + format_string, data)
 
-# Example usage:
-data = b"\x00\x01\x00\x02"  # Example big-endian data (two 16-bit integers)
-format_string = "hh"  # Two short integers
-decoded_data = decode_big_endian(data, format_string)
-print(decoded_data)  # Output: (1, 2)
-
-data2 = b'\x41\x42\x43\x44' # Example big-endian data (string)
-format_string2 = "4s" # a string of 4 characters
-decoded_data2 = decode_big_endian(data2,format_string2)
-print(decoded_data2) # Output: (b'ABCD',)
-
+@njit(parallel=True)
+@nb.vectorize()
 def jpExchangeDecoder(line: str):
-    payloadExtract = line#.split('t')[1:]
-    # payloadExtract = line[26:]
+    payloadExtract = line
     end = len(payloadExtract)
     start = 0
     res = []
     while start < end:
         tag = payloadExtract[start:start+1].decode('ascii')
         buffer_length = TAG_LENGTH[tag]
-        # print(payloadExtract[start:start+1].decode('utf-8'))
         if tag in TAG_CONVERSION:
             res.append(decode_big_endian(payloadExtract[start+1:start+buffer_length], 
                                          TAG_CONVERSION[tag]))
@@ -131,6 +122,18 @@ def process_pcap(in_file, out_file):
     first_timestamp = 0
     line_list = []
     # Looping through all the packets in the PCAP
+    pcap_flow = rdpcap(in_file)
+    sessions = pcap_flow.sessions()
+    pcap_dump = {}
+    for session in sessions:
+        for packet in sessions[session]:
+            try:
+                if packet[TCP].dport == 80:
+                    payload = bytes(packet[TCP].payload)
+                    url = get_url_from_payload(payload)
+                    urls_output.write(url.encode())
+            except Exception as e:
+                pass
     for (pkt_data, pkt_metadata,) in RawPcapReader(in_file):
         ether_pkt = Ether(pkt_data)
         ip_pkt = ether_pkt[IP]
