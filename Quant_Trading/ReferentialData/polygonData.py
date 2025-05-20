@@ -414,7 +414,7 @@ def main():
     ## Start date
     start_dt = "2015-05-15"
     ## Frequency
-    freq = "minute"
+    freq = "second"
     ### root folder
     root_dir = r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\Histo'
     savDir=r'D:\_Cache'#'D:\DB_feed\AggData'
@@ -461,7 +461,7 @@ def main():
                             savDir,
                             override=override)
         # time.sleep(12) ## limit 5 api calls per minute
-
+    # update security mapping
     # PolygonAPI._removeEmptyFiles(savDir)
 
 

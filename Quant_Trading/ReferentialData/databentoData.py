@@ -19,6 +19,30 @@ SCHEMA_DICT = {
                'L3':['mbo', 'imbalance']
                }
 
+DATA_SETS = [
+    "ARCX.PILLAR",
+    "DBEQ.BASIC",
+    "EPRL.DOM",
+    "EQUS.MINI",
+    "EQUS.SUMMARY",
+    "GLBX.MDP3",
+    "IEXG.TOPS",
+    "IFEU.IMPACT",
+    "NDEX.IMPACT",
+    "OPRA.PILLAR",
+    "XASE.PILLAR",
+    "XBOS.ITCH",
+    "XCHI.PILLAR",
+    "XCIS.TRADESBBO",
+    "XNAS.BASIC",
+    "XNAS.ITCH",
+    "XNYS.PILLAR",
+    "XPSX.ITCH"
+]
+
+ENCODING = ['dbn', 'csv', 'json']
+
+
 class databentoAPI(object):
     def __init__(self) -> None:
         f = open(r"C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\ReferentialData\databentoApiKey.txt", "r")
@@ -31,10 +55,52 @@ class databentoAPI(object):
     def __repr__(self) -> str:
         return self.get__repr__()
     
+    def _getMetaData(self,
+                     dataset: str = "",
+                     schema: str = "",
+                     savDir: str = "") -> None:
+        if dataset != "":
+            if dataset not in DATA_SETS:
+                logging.error("INVALID DATA SET!")
+                return None
+            schemas =  self._histoClient.metadata.list_schemas(dataset)
+            if savDir != "":
+                with open(os.path.join(savDir, f"{datasets}_schemas.json"), "w") as file:
+                    json.dump(schemas, file, indent=4)
+        datasets =  self._histoClient.metadata.list_datasets()
+        if savDir != "":
+            with open(os.path.join(savDir, f"datasets.json"), "w") as file:
+                json.dump(datasets, file, indent=4)
+        publishers = self._histoClient.metadata.list_publishers()
+        if savDir != "":
+            with open(os.path.join(savDir, f"publishers.json"), "w") as file:
+                json.dump(publishers, file, indent=4)
+        if schema != "":
+            if schema not in sum(SCHEMA_DICT.values(), []):
+                logging.error("INVALID SCHEMA!")
+                return None
+            list_of_fields = self._histoClient.metadata.list_fields(schema="trades", encoding="dbn")
+            if savDir != "":
+                with open(os.path.join(savDir, f"list_of_fields.json"), "w") as file:
+                    json.dump(list_of_fields, file, indent=4)
+        pass
+                     
+    def requestBatch(self,
+                     dataset: str,
+                     symbols: str,
+                     schema: str,
+                     start: str|pd.Timestamp|int,
+                     end: str|pd.Timestamp|int,
+                     encoding: str = "dbn",
+                     compression: str = "zstd",
+                     ):
+        ### can try to automate download?
+        pass
+    
     def getPrices(self, 
                 tickers: list, multiplier:int = 1, 
                 timespan:str="minute", 
-                from_="2015-05-18", 
+                from_:str|pd.Date="2015-05-18", 
                 to_="2025-05-18", 
                 include_splits=True,
                 limit=50000,
@@ -124,36 +190,3 @@ class databentoAPI(object):
                     LE_HISTO[ticker] = hist
                 time.sleep(12) ## limit 5 api calls per minute
         return LE_HISTO,  _error
-
-
-    def getData(self, 
-                ticker: str, multiplier:int = 1, 
-                timespan:str="minute", 
-                from_="2023-01-01", 
-                to_="2023-06-13", 
-                limit=50000,
-                include_splits=True,
-                attemptNo = 0):
-    # List Aggregates (Bars)
-        aggs = []
-        try:
-            for a in self._client.list_aggs(ticker=ticker, multiplier=1, 
-                                            timespan=timespan, from_=from_, to=to_, 
-                                            limit=limit, adjusted=include_splits):
-                aggs.append(a)
-            if len(aggs) == 0:
-                if attemptNo > 2:
-                    # logging.info("No data loaded for Ticker {0}".format(ticker))
-                    logging.info("No data loaded for Ticker {0}".format(ticker))
-                else:
-                    time.sleep(5)
-                    logging.info("Retrying for ticker {0}... Attempt {1}".format(ticker, attemptNo + 2))
-                    return self.getData(ticker, timespan=timespan, from_=from_, to_=to_, limit=limit, include_splits=include_splits, attemptNo=attemptNo + 1)
-        except:
-            if attemptNo > 2:
-                logging.info("No data loaded for Ticker {0}".format(ticker))
-            else:
-                time.sleep(5)
-                logging.info("Retrying for ticker {0}... Attempt {1}".format(ticker, attemptNo + 2))
-                return self.getData(ticker, timespan=timespan, from_=from_, to_=to_, limit=limit, attemptNo=attemptNo + 1)
-        return aggs
