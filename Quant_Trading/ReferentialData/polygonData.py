@@ -22,45 +22,29 @@ class PolygonAPI(object):
     def __repr__(self) -> str:
         return self.get__repr__()
     
-    def getStatics(self, 
-                   tickers:list,
-                   from_="2023-01-01", 
-                    to_="2023-06-13",
-                    field_:str|None=None,
-                    _parallel = False,
-                    override=False,
-                    logDir:str=r'C:\Users\raymo\OneDrive\Desktop\Ray Stuff\_ErrorLogs'):
-        statics = {}
-        errors = []
-        lock = RLock()
-        if _parallel:
-            with lock:
-                foundCache = False
-                if not override and logDir != None:
-                    files = glob.glob(os.path.join(logDir, ticker, "*_histo.csv"))
-                    if len(files) > 0:
-                        foundCache = True
-                        hist = pd.read_csv(files[0])
-                # get historical market data
-                if not foundCache:
-                    hist = pd.DataFrame(self.getData(ticker, multiplier, timespan, from_, to_, limit, attemptNo=0))
-                if logDir != None and not foundCache and len(hist) > 1:
-                    save_format = "{0}_{1}_{2}".format(ticker,
-                                    from_.replace("-",""),
-                                    to_.replace("-",""))
-                    save_format = "{0}_{1}".format(ticker, "histo")
-                    self._saveData(hist, ticker, save_format, logDir, override)
-                if len(hist) > 1:
-                    histo[ticker] = hist ## to replace with struct
-                return hist
-        else:
-            for ticker in tickers:
-                statics[ticker], errors[ticker] = self.getStatic(self, 
-                    ticker, 
-                    from_, 
-                    to_,
-                    field_)
-        return statics, errors
+    def getFundamentals(self, 
+                ticker:str, 
+                from_="2023-01-01", 
+                to_="2023-06-13",
+                limit:float=100,
+                field_:str|None=None)->str:
+        fundamentals = {}
+        hasErr: bool = False
+        _error = []
+        start_dt = pd.Timestamp(from_)
+        end_dt = pd.Timestamp(to_)
+        res = {}
+        stock_financials =self._client.vx.list_stock_financials(ticker, 
+                                                filing_date_gte=start_dt,
+                                                filing_date_lte=end_dt,
+                                                include_sources=True)
+        for financial in stock_financials:
+            res[financial['count']] = financial
+            if financial['status'] != 'OK':
+                _error.append(ticker + "_" + financial['count'])
+                logging.info(ticker + "_" + financial['count'] + ": financials not loaded...")
+            
+        return json.dumps(res)
 
     def getStatic(self, 
                 ticker:str, 
@@ -372,6 +356,19 @@ class PolygonAPI(object):
         df.to_csv(Path(loc_dir) / f"{file_name}.csv", index=False)
         logging.info("Finished Saving {0}".format(file_name))
         
+
+    @staticmethod
+    def _saveParquet(df: pd.DataFrame, 
+                  ticker:str, 
+                  file_name: str, 
+                  path: str|None=r'D:\DB_feed\AggData',
+                  override:bool=False):
+        loc_dir = os.path.join(path, ticker)
+        if not os.path.exists(loc_dir):
+            os.mkdir(loc_dir)
+        df.to_csv(Path(loc_dir) / f"{file_name}.csv", index=False)
+        logging.info("Finished Saving {0}".format(file_name))
+      
 def applySplitPricing(df: pd.DataFrame, splits: pd.DataFrame):
     splits = splits.loc[:,~splits.columns.str.contains("^Unnamed")]   
     splits['execution_date'] = pd.to_datetime(splits['execution_date'])
