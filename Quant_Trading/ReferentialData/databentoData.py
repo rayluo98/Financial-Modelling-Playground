@@ -190,3 +190,8 @@ class databentoAPI(object):
                     LE_HISTO[ticker] = hist
                 time.sleep(12) ## limit 5 api calls per minute
         return LE_HISTO,  _error
+    
+    @staticmethod
+    def unzipDBN(path: str):
+        # Read saved .dbn.zst
+        return db.DBNStore.from_file(path)

@@ -414,7 +414,7 @@ def main():
     ## Start date
     start_dt = "2015-05-15"
     ## Frequency
-    freq = "second"
+    freq = "hour"
     ### root folder
     root_dir = r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\Histo'
     savDir=r'D:\_Cache'#'D:\DB_feed\AggData'
