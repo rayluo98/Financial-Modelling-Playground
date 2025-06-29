@@ -10,7 +10,12 @@ import matplotlib.pyplot as plt
 ## GLOBALS
 DIR = r'~\Cache'
 class IndexFactory:
-    def __init__(self, price:pd.DataFrame, statics:pd.DataFrame, rule:Callable):
+    def __init__(self, 
+                 bm_ticker:str,
+                 price:pd.DataFrame, 
+                 statics:pd.DataFrame, 
+                 rule:Callable=None):
+        self.bm_ticker = bm_ticker
         self.px = price
         self.static = statics
         ## define universe from price data frame
@@ -33,7 +38,7 @@ class IndexFactory:
         pass
 
 def main():
-    ## load existing data
+    ## load existing data - all SP500 names over the last 10 years
     history = pd.read_csv(os.path.join(DIR, "data.csv"))
     ## pull static data
     static = pd.read_csv(os.path.join(DIR, "static.csv"))

@@ -14,13 +14,52 @@ import glob
 
 class PolygonAPI(object):
     def __init__(self) -> None:
-        f = open(r"C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\ReferentialData\polygonApiKey.txt", "r")
+        f = open(r"/home/rayluo98/QuantLib/Financial-Modelling-Playground/Quant_Trading/ReferentialData/polygonApiKey.txt", "r")
         API_KEY = f.read()
         self._client = RESTClient(api_key=API_KEY)
         pass
 
     def __repr__(self) -> str:
         return self.get__repr__()
+    
+    def getUniverse(self,
+                    type:str,
+                    exchange:str,
+                    market:str='stocks',
+                    active:bool=True,
+                    date:str="2020-01-01"):
+        tickers = []
+        PAYLOAD_LIMIT = 1000
+        curr_payload = []
+        for t in self._client.list_tickers(
+            market=market,
+            active=active,
+            limit=PAYLOAD_LIMIT,
+            date=date,
+            type=type,
+            ticker_gte='',
+            sort='ticker'
+        ):
+            curr_payload.append(t)
+
+        ## most likely more needs to be loaded
+        while(len(curr_payload) == PAYLOAD_LIMIT):
+            last_seen_ticker = curr_payload[-1]
+            tickers += curr_payload
+            curr_payload = []
+            for t in self._client.list_tickers(
+                market=market,
+                active=active,
+                limit=PAYLOAD_LIMIT,
+                date=date,
+                type=type,
+                ticker_gte=last_seen_ticker,
+                sort='ticker'
+            ):
+                curr_payload.append(t)
+
+        tickers += curr_payload
+        return tickers
     
     def getFundamentals(self, 
                 ticker:str, 
