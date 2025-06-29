@@ -9,7 +9,7 @@ import concurrent.futures
 from threading import Thread
 from threading import RLock
 from pathlib import Path
-from DataAnalysis import DataExtensions
+# from DataAnalysis import DataExtensions
 import glob
 
 class PolygonAPI(object):
@@ -441,27 +441,51 @@ def adjust_histo_to_splits(histo: dict, splits: dict):
             adjusted_res[ticker] = applySplitPricing(histo[ticker], splits[ticker])
     return adjusted_res
     
-# Defining main function
+# REDESIGNING IN THIS IN A CONSOLE FORMAT
 def main():
     Client = PolygonAPI()
+    print("POLYGON DATA LOADING:::::::::::::")
+    
     ## Load names to load 
+
     ## End Date
-    end_dt = "2025-05-15"
+    end_dt = input("END DATE:") or "2025-05-15" 
     ## Start date
-    start_dt = "2015-05-15"
+    start_dt = input("START DATE: ") or "2015-05-15"
     ## Frequency
-    freq = "hour"
+    freq = input("Frequency: ") or 'hour'
     ### root folder
-    root_dir = r'C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\Histo'
-    savDir=r'D:\_Cache'#'D:\DB_feed\AggData'
+    root_dir = r'/home/rayluo98/QuantLib/Financial-Modelling-Playground/Quant_Trading/Histo'
+    savDir=r'/home/rayluo98/l1_cache'#'/mnt/z/rayluo98/_Cache'#'D:\DB_feed\AggData'
     override=True
     include_splits=True
-
+    
     # Tickers to Load
-    _tickers = list(pd.read_csv(os.path.join(root_dir, 'clean_names.csv'))['0'])
+    ticker_switch = input("Which ticker universe to load (DEFAULT/FILE)? ")
+    if ticker_switch == "FILE":
+        # read tickers from file 
+        file_path = "/home/rayluo98/temp.txt"  # Replace with the actual path to your file
+
+        try:
+            with open(file_path, 'r') as file:
+                lines = file.readlines()
+            
+            # Optional: Remove newline characters from each line
+            _tickers = [line.strip() for line in lines]
+        except FileNotFoundError:
+            print(f"Error: The file '{file_path}' was not found.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+    else:
+        _tickers = list(pd.read_csv(os.path.join(root_dir, 'clean_names.csv'))['0'])
 
     # truncate ticker 
     startFrom = ""
+
+    ########### CONTROL #############
+    TARGET_TYPE = input("Please choose from the following: /n")
+
+    #################################
     
     if startFrom != "":
         try:

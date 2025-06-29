@@ -39,6 +39,10 @@ class IndexFactory:
 
 def main():
     ## load existing data - all SP500 names over the last 10 years
+
+    # we want to define our univesrse
+    sp_current, sp_past = utils.getSPXConstituents()
+
     history = pd.read_csv(os.path.join(DIR, "data.csv"))
     ## pull static data
     static = pd.read_csv(os.path.join(DIR, "static.csv"))
