@@ -84,6 +84,26 @@ class PolygonAPI(object):
                 logging.info(ticker + "_" + financial['count'] + ": financials not loaded...")
             
         return json.dumps(res)
+    
+    def loadStaticReference(self,
+                           tickers:list[str],
+                           dt=dt.date.today().strftime("%Y-%m-%d"),
+                           override = False,
+                           logDir = None):
+        static_count = 0
+        for ticker in tickers:
+            foundCache = False
+            if not override and logDir != None:
+                files = glob.glob(os.path.join(logDir, ticker, "_static.csv"))
+                if len(files) > 0:
+                    foundCache = True
+                    static = pd.read_csv(files[0])
+            if not foundCache:
+                static, _err = self.getStatic(ticker, dt, dt)
+            if logDir != None and not foundCache and len(static) >= 1:
+                save_format = "{0}_{1}".format(ticker, "static")
+                self._saveData(static, ticker, save_format, logDir, override)
+        pass
 
     def getStatic(self, 
                 ticker:str, 
@@ -456,7 +476,7 @@ def main():
     freq = input("Frequency: ") or 'hour'
     ### root folder
     root_dir = r'/home/rayluo98/QuantLib/Financial-Modelling-Playground/Quant_Trading/Histo'
-    savDir=r'/home/rayluo98/l1_cache'#'/mnt/z/rayluo98/_Cache'#'D:\DB_feed\AggData'
+    savDir=r'/home/rayluo98/l1_static'#'/mnt/z/rayluo98/_Cache'#'D:\DB_feed\AggData'
     override=True
     include_splits=True
     
@@ -483,44 +503,50 @@ def main():
     startFrom = ""
 
     ########### CONTROL #############
-    TARGET_TYPE = input("Please choose from the following: /n")
+    TARGET_TYPE = input("Please choose from the following: ")
 
     #################################
-    
-    if startFrom != "":
-        try:
-            _startIndex = _tickers.index(startFrom)
-        except:
-            _startIndex = 0
-        _tickers = _tickers[_startIndex:]
+    # if startFrom != "":
+    #     try:
+    #         _startIndex = _tickers.index(startFrom)
+    #     except:
+    #         _startIndex = 0
+    #     _tickers = _tickers[_startIndex:]
+    # cheat_check = [x[1] for x in os.walk(savDir)][0]
+    # # _tickers = list(set(cheat_check).intersection(set(_tickers)))
+    # files = glob.glob(os.path.join(savDir))
 
-    cheat_check = [x[1] for x in os.walk(savDir)][0]
-    # _tickers = list(set(cheat_check).intersection(set(_tickers)))
-    files = glob.glob(os.path.join(savDir))
-    prices, _errors = Client.getPrices(tickers=_tickers, from_ = start_dt, to_ = end_dt, 
-                           timespan=freq, _parallel = True, 
-                           include_splits=include_splits,override=override, logDir=savDir)
-    res = prices
-    # res = Client.getOutstandingTs(_tickers, start_dt, end_dt, savDir, True, False)
-    # if include_splits:
-    #     splits = Client.getSplitTs(_tickers, None, False, False)
-    #     res = adjust_histo_to_splits(prices, splits)
+    match TARGET_TYPE:
+        case "Static":
+            Client.loadStaticReference(_tickers, logDir=savDir)
+            _errors = {}
+        case "Outstanding":
+            res = Client.getOutstandingTs(_tickers, start_dt, end_dt, savDir, True, False)
+        case _:
+            prices, _errors = Client.getPrices(tickers=_tickers, from_ = start_dt, to_ = end_dt, 
+                                timespan=freq, _parallel = True, 
+                                include_splits=include_splits,override=override, logDir=savDir)
+            if include_splits:
+                splits = Client.getSplitTs(_tickers, None, False, False)
+                res = adjust_histo_to_splits(prices, splits)
+            res = prices
+
 
     Client._saveErrors(savDir, _errors, start_dt)
-    # loading [avoid multithreading due to data parsing limit
-    for ticker in _tickers:
-        if override and os.path.exists(os.path.join(savDir, ticker)):
-            continue
-        if ticker not in res:
-            continue
-        Client._saveData(pd.DataFrame(res[ticker]), 
-                             ticker, "{0}_{1}_{2}_{3}".format(ticker,
-                                        start_dt.replace("-",""),
-                                        end_dt.replace("-",""),
-                                        "SplitAdjusted" if include_splits else ""),
-                            savDir,
-                            override=override)
-        # time.sleep(12) ## limit 5 api calls per minute
+
+    # for ticker in _tickers:
+    #     if override and os.path.exists(os.path.join(savDir, ticker)):
+    #         continue
+    #     if ticker not in res:
+    #         continue
+    #     Client._saveData(pd.DataFrame(res[ticker]), 
+    #                          ticker, "{0}_{1}_{2}_{3}".format(ticker,
+    #                                     start_dt.replace("-",""),
+    #                                     end_dt.replace("-",""),
+    #                                     "SplitAdjusted" if include_splits else ""),
+    #                         savDir,
+    #                         override=override)
+
     # update security mapping
     # PolygonAPI._removeEmptyFiles(savDir)
 

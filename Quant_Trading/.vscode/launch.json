@@ -11,9 +11,8 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "cwd":"C:\\Users\\raymo\\OneDrive\\Desktop\\Playground\\Financial-Modelling-Playground\\Quant_Trading",
+            "cwd":"/home/rayluo98/QuantLib/Financial-Modelling-Playground/Quant_Trading",
              "env": {"PYTHONPATH":"${cwd}"}
         }
-    ],
-    "terminal.integrated.defaultProfile.windows":"Powershell"
+    ]
 }
