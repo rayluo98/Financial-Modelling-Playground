@@ -11,7 +11,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "cwd":"/home/rayluo98/QuantLib/Financial-Modelling-Playground/Quant_Trading",
+            "cwd":"C:/Users/raymo/OneDrive/Desktop/Playground/Financial-Modelling-Playground/Quant_Trading",
              "env": {"PYTHONPATH":"${cwd}"}
         }
     ]

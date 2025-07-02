@@ -14,7 +14,8 @@ import glob
 
 class PolygonAPI(object):
     def __init__(self) -> None:
-        f = open(r"/home/rayluo98/QuantLib/Financial-Modelling-Playground/Quant_Trading/ReferentialData/polygonApiKey.txt", "r")
+        # f = open(r"/home/rayluo98/QuantLib/Financial-Modelling-Playground/Quant_Trading/ReferentialData/polygonApiKey.txt", "r")
+        f = open(r"C:\Users\raymo\OneDrive\Desktop\Playground\Financial-Modelling-Playground\Quant_Trading\ReferentialData\polygonApiKey.txt", "r")
         API_KEY = f.read()
         self._client = RESTClient(api_key=API_KEY)
         pass
@@ -91,6 +92,7 @@ class PolygonAPI(object):
                            override = False,
                            logDir = None):
         static_count = 0
+        static_res = []
         for ticker in tickers:
             foundCache = False
             if not override and logDir != None:
@@ -99,11 +101,13 @@ class PolygonAPI(object):
                     foundCache = True
                     static = pd.read_csv(files[0])
             if not foundCache:
-                static, _err = self.getStatic(ticker, dt, dt)
-            if logDir != None and not foundCache and len(static) >= 1:
-                save_format = "{0}_{1}".format(ticker, "static")
-                self._saveData(static, ticker, save_format, logDir, override)
-        pass
+                static_load, _err = self.getStatic(ticker, dt, dt)
+                if len(static_load) != 0:
+                    static_res.append(dict(static_load.Static.values[0].__dict__))
+        if logDir != None and not foundCache and len(static_res) >= 1:
+            save_format = "{0}_{1}".format("referential", "static")
+            self._saveData(pd.DataFrame(static_res), "", save_format, logDir, override)
+        return pd.DataFrame(static_res)
 
     def getStatic(self, 
                 ticker:str, 
@@ -331,7 +335,7 @@ class PolygonAPI(object):
         if _parallel:
             lock = RLock()
             func = lambda x: getOutstandings(x, from_, to_, LE_STATIC, logDir, override, lock)
-            with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=80) as executor:
                 #result = executor.map(functools.partial(loadHistory , tickers, LE_HISTO, lock))
                 executor.map(func, tickers)
         else:
@@ -407,9 +411,12 @@ class PolygonAPI(object):
     def _saveData(df: pd.DataFrame, 
                   ticker:str, 
                   file_name: str, 
-                  path: str|None=r'D:\DB_feed\AggData',
+                  path: str|None='Z:/rayluo98/_Cache',
                   override:bool=False):
-        loc_dir = os.path.join(path, ticker)
+        if ticker == "":
+            loc_dir = path
+        else:
+            loc_dir = os.path.join(path, ticker)
         if not os.path.exists(loc_dir):
             os.mkdir(loc_dir)
         df.to_csv(Path(loc_dir) / f"{file_name}.csv", index=False)
@@ -476,7 +483,7 @@ def main():
     freq = input("Frequency: ") or 'hour'
     ### root folder
     root_dir = r'/home/rayluo98/QuantLib/Financial-Modelling-Playground/Quant_Trading/Histo'
-    savDir=r'/home/rayluo98/l1_static'#'/mnt/z/rayluo98/_Cache'#'D:\DB_feed\AggData'
+    savDir=r'Z:/rayluo98/_Cache'#r'/home/rayluo98/l1_static'#'/mnt/z/rayluo98/_Cache'#
     override=True
     include_splits=True
     
@@ -484,7 +491,7 @@ def main():
     ticker_switch = input("Which ticker universe to load (DEFAULT/FILE)? ")
     if ticker_switch == "FILE":
         # read tickers from file 
-        file_path = "/home/rayluo98/temp.txt"  # Replace with the actual path to your file
+        file_path = r"/home/rayluo98/temp.txt"  # Replace with the actual path to your file
 
         try:
             with open(file_path, 'r') as file:
@@ -496,6 +503,30 @@ def main():
             print(f"Error: The file '{file_path}' was not found.")
         except Exception as e:
             print(f"An error occurred: {e}")
+    elif ticker_switch == "MANUAL":
+        _tickers = ['ELV', 'LMT', 'AN', 'PSX', 'MSFT', 'MAT', 'SNDK', 'PFE', 'WRB', 'GHC', 'UHS', 'MDLZ', 'MET', 'BK', 'AMZN', 'SHW', 'IP', 'WDAY', 'ALK', 'PANW', 'INTC', 'USL', 'TXT', 'HPE', 'CRL', 
+                    'PTC', 'UA', 'ANET', 'DE', 'PLL', 'COR', 'CNC', 'CTVA', 'GS', 'DPZ', 'LII', 'RJF', 'MTB', 'GPC', 'JEF', 'MMI', 'SEE', 'FOX', 'EFX', 'PPG', 'NKTR', 'DD', 'ZBRA', 'CHTR', 'AMCR', 'BDX',
+                    'APO', 'STZ', 'AEP', 'JBHT', 'MBI', 'LRCX', 'BIO', 'ANF', 'COIN', 'DUK', 'CMCSA', 'TEL', 'FL', 'WDC', 'EMC', 'NWL', 'BAC', 'CPRI', 'ADT', 'EOG', 'FIS', 'BMY', 'GOOG', 'PH', 'HOLX', 
+                    'O', 'PG', 'WBA', 'CL', 'PNR', 'KKR', 'CBRE', 'EMN', 'RVTY', 'CMI', 'GDDY', 'ED', 'HWM', 'KLAC', 'BKNG', 'SMCI', 'TSLA', 'ETR', 'EXPE', 'MCK', 'GILD', 'HIG', 'CIEN', 'GD', 'ALL', 'WTW', 
+                    'ERIE', 'PARA', 'INFO', 'META', 'ALGN', 'IPG', 'HON', 'LEG', 'NXPI', 'AZO', 'AAPL', 'BIIB', 'BXP', 'FANG', 'VLTO', 'UDR', 'SLG', 'EP', 'FE', 'TRV', 'TMO', 'C', 'LNT', 'NDSN', 'FRT', 'J', 
+                    'CSCO', 'IR', 'TRGP', 'BA', 'PODD', 'DV', 'MS', 'SYF', 'LEN', 'RIG', 'SII', 'AEE', 'LYV', 'KVUE', 'BAX', 'DHR', 'SBNY', 'HBI', 'SEDG', 'SLB', 'ROP', 'HES', 'HRL', 'AMT', 'SO', 'HRB', 'CLF', 
+                    'ADCT', 'WB', 'LKQ', 'ANSS', 'IBM', 'SYY', 'GIS', 'OKE', 'SYK', 'JKHY', 'TAP', 'FTI', 'OTIS', 'CNX', 'MA', 'ILMN', 'XOM', 'CA', 'CPB', 'ADI', 'TE', 'AAL', 'CTSH', 'AVB', 'L', 'GNRC', 'AFL', 
+                    'CDNS', 'AIZ', 'AMTM', 'MLM', 'TDC', 'NEM', 'WELL', 'BLDR', 'ROK', 'MRNA', 'APTV', 'AKAM', 'ITW', 'MCO', 'TPL', 'DLTR', 'BLK', 'FB', 'MMM', 'ADBE', 'PAYC', 'ULTA', 'VMC', 'FOSL', 'BHF', 'TYL',
+                    'DELL', 'WU', 'CEG', 'ROST', 'BR', 'AXP', 'SBAC', 'PRGO', 'UBER', 'GM', 'DTE', 'SOLV', 'CMA', 'WHR', 'MAA', 'IRM', 'RL', 'TTWO', 'EQR', 'SCHW', 'GWW', 'FLS', 'AOS', 'EQT', 'STT', 'K', 'MGM',
+                    'NRG', 'SLE', 'STI', 'NTAP', 'VRTX', 'DAL', 'HSY', 'UAL', 'BC', 'EG', 'MNST', 'FFIV', 'ODFL', 'SWKS', 'D', 'LLY', 'DYN', 'TPR', 'TGNA', 'VNT', 'ETN', 'CDW', 'AAP', 'SPGI', 'SE', 'VZ', 'GNW', 
+                    'PEP', 'KO', 'SHLD', 'RCL', 'ON', 'TDG', 'DNB', 'AMG', 'MSI', 'COO', 'WSM', 'PBI', 'PWR', 'LHX', 'VLO', 'V', 'AMD', 'ES', 'OMC', 'PRU', 'HD', 'QCOM', 'MU', 'KSS', 'INVH', 'ICE', 'UNH', 'XRAY', 
+                    'CF', 'ABNB', 'HLT', 'SLM', 'VNO', 'CHRW', 'AMP', 'FDS', 'AYI', 'AMGN', 'EPAM', 'CCK', 'FTNT', 'APA', 'DVN', 'OXY', 'GEHC', 'NWS', 'FLR', 'COST', 'ABT', 'PHM', 'NWSA', 'CPWR', 'NOW', 'EL', 'UPS', 
+                    'HII', 'NDAQ', 'CTRA', 'HUM', 'IGT', 'CRWD', 'LULU', 'POOL', 'DVA', 'BALL', 'LYB', 'NOC', '_Errors', 'GOOGL', 'TER', 'KHC', 'ADP', 'EMR', 'AON', 'AVGO', 'TECH', 'NFLX', 'FDX', 'ALLE', 'DOW', 'BG', 'MAR', 
+                    'EVRG', 'WMB', 'IDXX', 'VST', 'PPL', 'PSA', 'CPT', 'TT', 'RF', 'BX', 'FTV', 'NE', 'JPM', 'LNC', 'MCD', 'TRMB', 'BKR', 'TGT', 'SIG', 'TJX', 'LOW', 'CAG', 'USB', 'CVX', 'NBR', 'GPN', 'ROL', 'ZION', 'LW', 
+                    'VRSN', 'WMT', 'CB', 'MRK', 'CSGP', 'CPAY', 'WYNN', 'STX', 'MAS', 'MPWR', 'MOS', 'ZTS', 'NOV', 'MCHP', 'CINF', 'ZBH', 'LDOS', 'ESS', 'TXN', 'PM', 'KMI', 'DOC', 'BF.B', 'KBH', 'PAYX', 'EXC', 'GEV', 
+                    'ETSY', 'NI', 'COF', 'JNPR', 'MSCI', 'ODP', 'GME', 'ISRG', 'KEYS', 'CZR', 'KG', 'DGX', 'ORLY', 'S', 'UNM', 'APD', 'EW', 'R', 'LH', 'VRSK', 'KDP', 'ALB', 'NUE', 'BWA', 'STR', 'BRO', 'MTCH', 'RTX', 
+                    'RSG', 'AWK', 'NYT', 'FHN', 'URBN', 'RRC', 'GRMN', 'JCI', 'KMX', 'ADSK', 'BSX', 'NVR', 'TDY', 'PVH', 'ADM', 'CCI', 'ORCL', 'SUN', 'FICO', 'HAS', 'PNC', 'SNA', 'COP', 'ATI', 'BEAM', 'KIM', 'LUMN', 
+                    'DOV', 'AJG', 'PLTR', 'DLR', 'AES', 'AA', 'GE', 'KMB', 'CBOE', 'TSN', 'THC', 'MPC', 'TFC', 'BBWI', 'XYL', 'COTY', 'CMG', 'LIN', 'VICI', 'KR', 'PFG', 'STE', 'WFC', 'BUD', 'FCX', 'YUM', 'ECL', 'VFC', 
+                    'MOH', 'EXR', 'ACN', 'CI', 'NVDA', 'BBY', 'AVY', 'CHD', 'DRI', 'DASH', 'PNW', 'DIS', 'AMAT', 'RMD', 'MMC', 'LUV', 'SNPS', 'SRE', 'SBUX', 'FMC', 'FSLR', 'SW', 'QRVO', 'EQIX', 'SPG', 'CNP', 'MAC', 'NEE', 
+                    'XRX', 'EBAY', 'HCA', 'EXPD', 'TMC', 'REG', 'CVS', 'HST', 'HBAN', 'AXON', 'NKE', 'TSCO', 'BEN', 'PYPL', 'CRM', 'UAA', 'INTU', 'PENN', 'CSX', 'WY', 'GLW', 'DECK', 'FOXA', 'IQV', 'TRIP', 'ABBV', 'HPQ', 'FITB', 
+                    'WST', 'WM', 'NTRS', 'DXC', 'BTU', 'KEY', 'HSIC', 'FI', 'IT', 'JBL', 'CLX', 'WBD', 'PGR', 'IFF', 'CMS', 'TFX', 'A', 'CME', 'TKO', 'MKTX', 'ENPH', 'AIG', 'TROW', 'ITT', 'PKG', 'HAL', 'DHI', 'SWK', 'DAY', 'IEX', 
+                    'VTRS', 'INCY', 'EA', 'APH', 'WAB', 'NSC', 'AME', 'REGN', 'VTR', 'EIX', 'ACT', 'XEL', 'PLD', 'MUR', 'MI', 'IVZ', 'LVS', 'T', 'HP', 'ACGL', 'AIV', 'ATO', 'URI', 'MDT', 'CTAS', 'ARE', 'CPRT', 'OI', 'MKC', 'GL', 
+                    'FAST', 'M', 'WEC', 'CFG', 'NAVI', 'PEG', 'CCL', 'HUBB', 'CARR', 'OGN', 'UNP', 'CE', 'DG', 'EXE', 'F', 'STLD', 'WAT', 'GT', 'CAH', 'DXCM', 'IPGP', 'SJM', 'MHK', 'RHI', 'GEN', 'PCAR', 'MTD', 'NCLH', 'GRN', 'CAT', 'BRK.B', 'MO', 'MBC', 'TMUS', 'PCG', 'HOG', 'JNJ']
     else:
         _tickers = list(pd.read_csv(os.path.join(root_dir, 'clean_names.csv'))['0'])
 
@@ -560,8 +591,8 @@ def test():
     ## Start date
     start_dt = "2020-03-01"
     ### root folder
-    root_dir = r'D:\Histo'
-    savDir=r'D:\_Cache'#'D:\DB_feed\AggData'
+    root_dir = '/mnt/z/rayluo98/_Histo'
+    savDir='/mnt/z/rayluo98/_Cache'#'D:\DB_feed\AggData'
     override=False
     ticker = "AGG"
     temp = Client.getStatic(ticker,
