@@ -138,6 +138,7 @@ def test():
     print(f"Financial tickers: {len(ticker_list)}")
     print(ticker_list)
 
+    # df_iwf = getIWF(ticker_list, '2023-01-01', '2025-07-01')
     df_iwf = pd.read_csv("iwf_data.csv")
     print(df_iwf)
 
